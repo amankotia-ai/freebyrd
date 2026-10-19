@@ -1,0 +1,18 @@
+[package]
+name = "memory"
+description = "Freebyrd's memory: what the person worked on, kept in one SQLite file on their Mac"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+capture.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+claude-cli.workspace = true
+clap.workspace = true
+regex.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true

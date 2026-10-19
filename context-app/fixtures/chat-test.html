@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Create brand identity</title>
+</head>
+<body>
+  <!-- Serve the project root (not fixtures/) so ../extension/content.js loads.
+       Checks chatAsk() against ChatGPT- (2026 and older), Claude- and Gemini-like markup: the
+       person's own last three messages only, newest first, then how many they sent and, past
+       three, their first. The page title becomes PASS or FAIL;
+       window.result holds the details. -->
+  <main id="chatgpt">
+    <div data-message-author-role="user"><div>make a logo for Freebyrd</div></div>
+    <div data-message-author-role="assistant"><div>Here are three directions.</div></div>
+    <div data-message-author-role="user"><div>use this as the logo but make it face right.</div><div>super minimal like apple</div></div>
+    <div data-message-author-role="assistant"><div>Done, facing right.</div></div>
+  </main>
+  <main id="chatgpt-2026">
+    <section data-message-role="user" data-message-attachments="[]"><div data-user-message-bubble=""><div>first</div></div></section>
+    <section data-message-role="assistant"><p>An answer with an image.</p></section>
+    <section data-message-role="user" data-message-attachments="[1]"><div data-user-message-bubble=""><div>make it face right</div></div></section>
+    <section data-message-role="assistant"><p>Done.</p></section>
+  </main>
+  <main id="chatgpt-live">
+    <div><div data-user-message-bubble=""><div>a logo please</div></div></div>
+    <div><p>An image.</p></div>
+    <div><div data-user-message-bubble=""><div>now make it face right</div></div></div>
+    <div><p>Another image.</p></div>
+  </main>
+  <main id="nested">
+    <section data-message-role="user"><div data-user-message-bubble="">zero</div></section>
+    <section data-message-role="user"><div data-user-message-bubble="">one</div></section>
+    <section data-message-role="user"><div data-user-message-bubble="">two</div></section>
+    <section data-message-role="user"><div data-user-message-bubble="">three</div></section>
+  </main>
+  <main id="claude">
+    <div data-testid="user-message"><p>first ask</p></div>
+    <div class="font-claude-message"><p>an answer</p></div>
+    <div data-testid="user-message"><p>a darker palette please</p></div>
+  </main>
+  <main id="gemini">
+    <user-query><div class="query-text">compare these typefaces</div></user-query>
+    <model-response><div>Typeface notes</div></model-response>
+  </main>
+  <main id="empty"><div data-message-author-role="assistant">Hello</div></main>
+
+  <script src="../extension/content.js"></script>
+  <script>
+    const got = {
+      chatgpt: chatAsk(document.getElementById("chatgpt"), "chatgpt.com"),
+      chatgpt2026: chatAsk(document.getElementById("chatgpt-2026"), "chatgpt.com"),
+      chatgptLive: chatAsk(document.getElementById("chatgpt-live"), "chatgpt.com"),
+      nested: chatAsk(document.getElementById("nested"), "chatgpt.com"),
+      claude: chatAsk(document.getElementById("claude"), "claude.ai"),
+      gemini: chatAsk(document.getElementById("gemini"), "gemini.google.com"),
+      empty: chatAsk(document.getElementById("empty"), "chatgpt.com"),
+      elsewhere: chatAsk(document.getElementById("chatgpt"), "example.com"),
+    };
+    const expected = {
+      chatgpt: "use this as the logo but make it face right.\nsuper minimal like apple\u001emake a logo for Freebyrd\u001d2",
+      chatgpt2026: "make it face right\u001efirst\u001d2",
+      chatgptLive: "now make it face right\u001ea logo please\u001d2",
+      nested: "three\u001etwo\u001eone\u001d4\u001dzero",
+      claude: "a darker palette please\u001efirst ask\u001d2",
+      gemini: "compare these typefaces\u001d1",
+      empty: null,
+      elsewhere: null,
+    };
+    const pass = JSON.stringify(got) === JSON.stringify(expected);
+    document.title = pass ? "PASS" : "FAIL";
+    window.result = { pass, got, expected };
+  </script>
+</body>
+</html>

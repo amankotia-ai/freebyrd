@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Extraction test</title>
+</head>
+<body>
+  <!-- Serve the project root (not fixtures/) so ../extension/content.js loads.
+       The page title becomes PASS or FAIL; window.result holds the details. -->
+  <!-- In view: the first line is in the viewport, the last is far below it. -->
+  <section id="view-case">
+    <p>View top: KESTREL-IN-VIEW</p>
+    <div style="height: 300vh"></div>
+    <p>View bottom: HERON-BELOW-FOLD</p>
+  </section>
+  <main id="case">
+    <h1>Phase 0 web probe</h1>
+    <p>Marker: OSPREY-2208</p>
+    <p>Read more at <a href="#">the example site</a>.</p>
+    <p>Line one<br>Line two</p>
+    <label for="note">Note</label>
+    <input id="note" value="typed into a field">
+
+    <!-- Labels: skipped -->
+    <button>Save draft</button>
+    <div role="button"><svg width="10" height="10"></svg><span>Add icon</span></div>
+    <div role="button" style="opacity:0">Add cover</div>
+    <div role="tablist"><div role="tab">All articles</div><div role="tab">Drafts</div></div>
+    <div role="toolbar"><div role="button">Filter</div><div role="button">Sort</div></div>
+    <div role="menu"><div role="menuitem">Delete page</div></div>
+    <span aria-hidden="true">decorative glyph</span>
+    <div style="display:none">Hidden panel</div>
+
+    <!-- Clickable rows around content: kept, with their inner labels skipped -->
+    <div role="button">
+      <div>Priced per what? A teardown of seat pricing</div>
+      <div>Published</div>
+      <div>2026-10-01</div>
+      <div><a href="#">unifize.com/resources/blog/priced-per-what</a></div>
+      <div role="checkbox" aria-checked="false">Featured</div>
+    </div>
+    <div role="button"><a href="#">unifize.com/resources/blog/short-post</a></div>
+    <table><tr><td>Cell A</td><td>Cell B</td></tr></table>
+  </main>
+
+  <script src="../extension/content.js"></script>
+  <script>
+    const expected = [
+      "Phase 0 web probe",
+      "Marker: OSPREY-2208",
+      "Read more at the example site.",
+      "Line one",
+      "Line two",
+      "Note",
+      "Priced per what? A teardown of seat pricing",
+      "Published",
+      "2026-10-01",
+      "unifize.com/resources/blog/priced-per-what",
+      "unifize.com/resources/blog/short-post",
+      "Cell A",
+      "Cell B",
+    ];
+    const started = performance.now();
+    const got = visibleText(document.getElementById("case")).split("\n");
+    const ms = performance.now() - started;
+    const inView = [];
+    const viewAll = visibleText(document.getElementById("view-case"), inView);
+    const page = extractPage({ view: true });
+    const view = {
+      lines: inView,
+      linesPass: viewAll.includes("HERON-BELOW-FOLD") &&
+        JSON.stringify(inView) === JSON.stringify(["View top: KESTREL-IN-VIEW"]),
+      pagePass: page.inView.includes("KESTREL-IN-VIEW") &&
+        !page.inView.includes("HERON-BELOW-FOLD") && page.text.includes("HERON-BELOW-FOLD"),
+      // Background reads do not work out what is in view.
+      backgroundPass: !("inView" in extractPage()),
+    };
+    const pass = JSON.stringify(got) === JSON.stringify(expected) &&
+      view.linesPass && view.pagePass && view.backgroundPass;
+    document.title = pass ? "PASS" : "FAIL";
+    window.result = { pass, ms, got, expected, view };
+  </script>
+</body>
+</html>

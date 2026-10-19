@@ -1,0 +1,12 @@
+[package]
+name = "browser-host"
+description = "Chrome native messaging host that receives page text from the Freebyrd extension"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+capture.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true

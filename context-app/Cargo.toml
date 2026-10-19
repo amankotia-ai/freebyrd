@@ -1,0 +1,42 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/capture",
+    "crates/ax-probe",
+    "crates/browser-host",
+    "crates/calendar",
+    "crates/claude-cli",
+    "crates/freebyrd",
+    "crates/memory",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+capture = { path = "crates/capture" }
+claude-cli = { path = "crates/claude-cli" }
+memory = { path = "crates/memory" }
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+base64 = "0.22"
+tauri = { version = "2", features = ["tray-icon"] }
+chrono = "0.4"
+regex = "1"
+# Bundled SQLite, with full-text search (FTS5) built in.
+rusqlite = { version = "0.40", features = ["bundled"] }
+tauri-build = "2"
+
+# This machine is short on disk. Full debug info for Tauri's dependencies
+# alone runs to gigabytes; line tables for our code are enough for backtraces.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

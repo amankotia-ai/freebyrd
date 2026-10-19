@@ -1,0 +1,1160 @@
+<!doctype html>
+<!--
+  film2.html - the Freebyrd showcase film, chapter 2 of a day with it (see
+  CHAPTERS.md): Freebyrd knows what you owe. It starts on chapter 1's last
+  frame (the held shot; Mail, the thread with Nina, 09:19) and works as
+  film.html does: the notch is the real one, rebuilt each frame with app.js's
+  own functions (Tauri stubbed), everything a pure function of time. The
+  camera holds chapter 1's shot throughout.
+
+    step 1  0.0 - 9.0 s   the notch over Mail: Up next is the promise just
+                          made; the checklist icon opens the list: To do (the
+                          promise, Asha's checklist, the pricing section),
+                          then Waiting on (Leo's SOW, Tom's hero image)
+    step 2  9.0 - 16.0 s  "Plan my day": the list laid into today around the
+                          Halden call; Add to calendar on the launch plan
+                          writes its agenda
+    step 3  16.0 - 25.0 s Asha's checklist, lunch, the pricing section and a
+                          walk added
+    step 4  25.0 - 31.5 s ⌘Space, Calendar: the day in the Freebyrd calendar;
+                          the launch plan's notes hold its agenda
+    step 5  31.5 - 39.5 s the minutes to 09:30; the block's alert; the notch
+                          again: Up next, the promise, Draft it (chapter 3
+                          presses it)
+
+  ?mode=board|flat, ?t, ?play as in film.html. The people, company and
+  emails are made up.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Freebyrd film, chapter 2</title>
+<link rel="stylesheet" href="../crates/freebyrd/ui/style.css">
+<link rel="stylesheet" href="../crates/freebyrd/ui/night.css">
+<style>
+:root {
+  --charcoal: #1f2126;
+  --mac-ink: #1d1d1f;
+  --mac-ink2: #424245;
+  --mac-muted: #86868b;
+  --mac-line: #e5e5e7;
+  --mac-side: #ececef;
+}
+
+/* ---------------------------------------------------------------- stage */
+html.film, html.film body { background: #000; }
+html.film-board, html.film-board body { background: var(--charcoal); }
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#cam { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; transform-origin: 0 0; }
+.film-flat #stage { position: static; width: 1512px; height: 982px; }
+.film-flat #mock, .film-flat #grain { display: none; }
+
+/* the screen: its top corners are the display's own continuous curves and
+   the notch is glass, not pixels (bezel.json, measured from Apple's 14-inch
+   bezel); both are set by the script, black outside */
+#screen { position: absolute; inset: 0; overflow: hidden; background: #000; }
+#notch { position: absolute; left: 0; top: 0; width: 1512px; height: 40px; background: #000; z-index: 5; }
+
+/* ---------------------------------------------------------------- desktop */
+#desktop {
+  position: absolute; inset: 0;
+  color: var(--mac-ink);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* a wallpaper of the film's own, in the vivid, airy way macOS's are: light
+     at the top so the menu bar reads dark, saturated round the edges */
+  background:
+    radial-gradient(900px 520px at 18% 6%, rgb(255 236 214 / 0.95), transparent 65%),
+    radial-gradient(1000px 700px at 100% 100%, rgb(255 120 92 / 0.95), transparent 62%),
+    radial-gradient(900px 760px at 0% 100%, rgb(214 70 196 / 0.9), transparent 60%),
+    radial-gradient(1300px 800px at 60% 30%, rgb(88 140 255 / 0.9), transparent 70%),
+    linear-gradient(170deg, #9cc4ff 0%, #5f86ff 40%, #6a4fe0 75%, #b04fc4 100%);
+}
+#desktop svg { display: block; }
+
+#menubar {
+  position: absolute; left: 0; top: 0; right: 0; height: 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px 0 18px;
+  background: rgb(246 246 248 / 0.82);
+  box-shadow: inset 0 -0.5px 0 rgb(0 0 0 / 0.08);
+  font-size: 13.5px; letter-spacing: -0.01em;
+}
+#menubar .menus { display: flex; gap: 21px; }
+#menubar .menus b { font-weight: 700; }
+#menubar .extras { display: flex; align-items: center; gap: 17px; font-variant-numeric: tabular-nums; }
+#menubar .extras svg { height: 15px; width: auto; fill: var(--mac-ink); }
+
+#mail {
+  position: absolute; left: 60px; top: 48px; width: 1392px; height: 906px;
+  display: grid; grid-template-columns: 220px 340px 1fr;
+  border-radius: 12px; overflow: hidden; background: #fff;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 0.26), 0 6px 18px rgb(0 0 0 / 0.08), 0 0 0 0.5px rgb(0 0 0 / 0.24);
+}
+
+.side { background: var(--mac-side); padding: 52px 10px 0; border-right: 0.5px solid rgb(0 0 0 / 0.1); position: relative; }
+.lights { position: absolute; left: 20px; top: 19px; display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.14); }
+.side h5 { margin: 14px 10px 6px; color: var(--mac-muted); font-size: 11px; font-weight: 600; }
+.side h5:first-of-type { margin-top: 4px; }
+.mb { display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 10px; border-radius: 6px; font-size: 13px; }
+.mb svg { width: 16px; height: 16px; fill: #007aff; flex: none; }   /* macOS: sidebar icons in the accent */
+.mb span { flex: 1; }
+.mb em { font-style: normal; color: var(--mac-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.mb.on { background: rgb(0 0 0 / 0.075); font-weight: 600; }
+
+.list { border-right: 1px solid var(--mac-line); overflow: hidden; }
+.list header { height: 64px; padding: 14px 18px 0; }
+.list header b { display: block; font-size: 15px; font-weight: 700; }
+.list header small { color: var(--mac-muted); font-size: 11.5px; }
+.row { position: relative; margin: 0 8px; padding: 10px 12px 11px 22px; border-radius: 8px; }
+.row + .row::before { content: ""; position: absolute; left: 22px; right: 12px; top: 0; height: 1px; background: #ededf0; }
+.row.on { background: #0064e1; color: #fff; }                      /* the accent while Mail is in front */
+.row.on .top time, .row.on .pre { color: rgb(255 255 255 / 0.78); }
+.inactive .row.on { background: #dcdce0; color: var(--mac-ink); }   /* grey once Freebyrd has the focus */
+.inactive .row.on .top time, .inactive .row.on .pre { color: var(--mac-muted); }
+.row.on + .row::before, .row.on::before { display: none; }
+.row .top { display: flex; justify-content: space-between; align-items: baseline; }
+.row .top b { font-size: 13.5px; font-weight: 600; }
+.row .top time { color: var(--mac-muted); font-size: 12px; }
+.row .sub { margin-top: 1px; font-size: 13px; }
+.row .pre { margin-top: 2px; color: var(--mac-muted); font-size: 12.5px; line-height: 1.38; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.row .dot { position: absolute; left: 8px; top: 16px; width: 8px; height: 8px; border-radius: 50%; background: #007aff; }
+
+.reader { position: relative; isolation: isolate; }   /* its toolbar stacks over the scrolling thread, not over the notch */
+.reader .tools { position: relative; z-index: 1; background: #fff; height: 52px; display: flex; justify-content: flex-end; align-items: center; gap: 22px; padding: 0 26px; border-bottom: 1px solid #f0f0f2; }   /* the thread scrolls under it */
+.reader .tools svg { width: 18px; height: 18px; fill: #8e8e93; }
+.reader .body { padding: 26px 48px 0; }
+.reader h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.015em; }
+.reader .count { margin-top: 3px; color: var(--mac-muted); font-size: 12.5px; }
+.msg { display: grid; grid-template-columns: 38px 1fr; column-gap: 14px; padding: 20px 0 22px; border-bottom: 1px solid #efeff1; }
+/* contact monograms, as macOS draws them: a grey gradient, white initials */
+.msg .av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(180deg, #a5a6ad, #85868d); color: #fff; font-size: 14px; font-weight: 600; letter-spacing: 0.02em; }
+.msg .av.me { background: linear-gradient(180deg, #a5a6ad, #85868d); }
+.msg .who { display: flex; justify-content: space-between; align-items: baseline; }
+.msg .who b { font-size: 14px; font-weight: 600; }
+.msg .who span { color: var(--mac-muted); font-size: 12.5px; }
+.msg .who time { color: var(--mac-muted); font-size: 12px; }
+.msg .text { grid-column: 2; margin-top: 10px; font-size: 14.5px; line-height: 1.6; color: var(--mac-ink); }
+.msg .text p { margin: 0 0 10px; }
+.msg .text p:last-child { margin-bottom: 0; }
+
+.slot { overflow: hidden; }
+.reader .body[hidden] { display: none; }
+.msg .text p { white-space: pre-wrap; }
+
+/* the notification a new email brings, top right, as macOS shows it */
+#banner, #cal-banner { position: absolute; top: 44px; right: 14px; width: 352px; display: flex; gap: 11px; padding: 12px 14px 13px 12px; border-radius: 18px; background: rgb(247 247 249 / 0.94); box-shadow: 0 12px 34px rgb(0 0 0 / 0.22), 0 0 0 0.5px rgb(0 0 0 / 0.14); z-index: 3; }
+.b-icon { flex: none; width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(180deg, #4aa8ff, #0a6fe8); }
+.b-icon svg { width: 24px; height: 24px; fill: #fff; }
+.b-main { min-width: 0; font-size: 13px; line-height: 1.35; }
+.b-top { display: flex; justify-content: space-between; align-items: baseline; }
+.b-top b { font-weight: 600; }
+.b-top time { color: var(--mac-muted); font-size: 12px; }
+.b-sub { font-weight: 500; }
+.b-text { color: #3a3a3c; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* the reply window, as Mail opens one: its own toolbar with Send, the
+   address fields, the body, and the message quoted under it */
+#compose {
+  position: absolute; left: 560px; top: 140px; width: 800px; height: 560px;
+  border-radius: 12px; overflow: hidden; background: #fff; color: var(--mac-ink);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.25);
+  transform-origin: 50% 20%;
+}
+#compose[hidden] { display: none; }
+.c-bar { position: relative; height: 52px; display: flex; align-items: center; gap: 18px; padding: 0 18px 0 20px; background: #f6f6f8; border-bottom: 1px solid #e8e8eb; }
+.c-bar .lights { position: static; }
+.c-send { display: grid; place-items: center; width: 36px; height: 28px; border-radius: 7px; }
+.c-send svg { width: 19px; height: 19px; fill: #007aff; }
+.c-title { position: absolute; left: 0; right: 0; text-align: center; font-size: 13.5px; font-weight: 600; pointer-events: none; }
+.c-tools { margin-left: auto; display: flex; gap: 18px; }
+.c-tools svg { width: 17px; height: 17px; fill: #8e8e93; }
+.c-field { display: flex; align-items: center; gap: 10px; height: 38px; margin: 0 20px; border-bottom: 1px solid #ececef; font-size: 13.5px; }
+.c-field label { width: 58px; text-align: right; color: var(--mac-muted); }
+.token { padding: 2px 8px; border-radius: 6px; background: rgb(0 122 255 / 0.12); color: #0060d6; }
+.c-body { padding: 18px 26px 0 26px; font-size: 14.5px; line-height: 1.6; }
+.c-text { min-height: 24px; white-space: pre-wrap; }
+#c-caret { display: inline-block; width: 1.5px; height: 18px; margin-left: 1px; vertical-align: -3px; background: #1d1d1f; }
+.c-quote { margin-top: 22px; color: var(--mac-muted); font-size: 13px; }
+.c-quote blockquote { margin: 8px 0 0; padding-left: 12px; border-left: 2px solid #007aff; color: #48484a; white-space: pre-wrap; font-size: 13.5px; }
+/* the menu title macOS flashes when its shortcut is pressed */
+#menubar .menus span { position: relative; }
+#menubar .menus span.flash::before { content: ""; position: absolute; inset: -3px -8px; border-radius: 5px; background: rgb(0 0 0 / 0.12); z-index: -1; }
+
+/* ---------------------------------------------------------------- Spotlight (⌘Space) */
+#spot { position: absolute; left: 416px; top: 176px; width: 680px; border-radius: 26px; overflow: hidden; z-index: 5;
+  background: rgb(246 246 248 / 0.92); color: var(--mac-ink);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.28), 0 8px 24px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.22);
+  transform-origin: 50% 0; }
+#spot[hidden] { display: none; }
+.sp-bar { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; font-size: 22px; letter-spacing: -0.01em; }
+.sp-bar svg { width: 22px; height: 22px; fill: #6e6e73; flex: none; }
+#sp-caret { display: inline-block; width: 2px; height: 26px; margin-left: 1px; background: #0a84ff; }
+.sp-results { border-top: 1px solid rgb(0 0 0 / 0.08); padding: 6px 8px 8px; }
+.sp-results[hidden] { display: none; }
+.sp-row { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 10px; font-size: 14.5px; }
+.sp-row span { margin-left: auto; color: var(--mac-muted); font-size: 12.5px; }
+.sp-row.on { background: #0064e1; color: #fff; }
+.sp-row.on span { color: rgb(255 255 255 / 0.78); }
+.app-icon { width: 30px; height: 30px; flex: none; }
+
+/* ---------------------------------------------------------------- Calendar: the day view */
+/* As macOS Calendar shows a day: the calendars on the left, the day's
+   hours, and on the right the month and the selected event's details. */
+#cal {
+  position: absolute; left: 60px; top: 48px; width: 1392px; height: 906px;
+  display: grid; grid-template-rows: 52px 1fr; border-radius: 12px; overflow: hidden; background: #fff; color: var(--mac-ink);
+  isolation: isolate;                            /* its now line stays inside it, under the notch and other windows */
+  box-shadow: 0 24px 70px rgb(0 0 0 / 0.26), 0 6px 18px rgb(0 0 0 / 0.08), 0 0 0 0.5px rgb(0 0 0 / 0.24);
+  transform-origin: 50% 40%;
+}
+#cal[hidden] { display: none; }
+.cal-bar { position: relative; display: flex; align-items: center; gap: 18px; padding: 0 20px; background: #f6f6f8; border-bottom: 1px solid #e8e8eb; }
+.cal-bar .lights { position: static; }
+.cal-bar svg { width: 17px; height: 17px; fill: #8e8e93; }
+.cal-seg { position: absolute; left: 50%; translate: -50% 0; display: flex; padding: 2px; border-radius: 8px; background: rgb(0 0 0 / 0.06); font-size: 12.5px; }
+.cal-seg span { padding: 3px 16px; border-radius: 6px; color: #3a3a3c; }
+.cal-seg span.on { background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.14); font-weight: 600; color: var(--mac-ink); }
+.cal-bar .right { margin-left: auto; }
+.cal-main { display: grid; grid-template-columns: 200px 1fr 400px; min-height: 0; }
+.cal-side { background: var(--mac-side); border-right: 0.5px solid rgb(0 0 0 / 0.1); padding: 16px 14px; font-size: 13px; }
+.cal-side h5 { margin: 0 0 8px; color: var(--mac-muted); font-size: 11px; font-weight: 600; }
+.cal-side h5 + .cal-list + h5 { margin-top: 18px; }
+.cal-list { display: flex; flex-direction: column; gap: 7px; }
+.cal-check { display: flex; align-items: center; gap: 8px; }
+.cal-check i { width: 13px; height: 13px; border-radius: 3.5px; background: var(--c); display: grid; place-items: center; }
+.cal-check i::after { content: ""; width: 6px; height: 3.5px; border: solid #fff; border-width: 0 0 1.6px 1.6px; rotate: -45deg; translate: 0 -1px; }
+.cal-day { position: relative; border-right: 1px solid #ececef; overflow: hidden; }
+.cal-head { height: 64px; padding: 14px 22px 0; }
+.cal-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.015em; }
+.cal-head span { margin-left: 10px; color: var(--mac-muted); font-size: 15px; }
+.cal-allday { height: 26px; margin-left: 64px; border-top: 1px solid #ececef; border-bottom: 1px solid #ececef; }
+.cal-allday::before { content: "all-day"; position: absolute; left: 14px; margin-top: 5px; color: var(--mac-muted); font-size: 11px; }
+.cal-grid { position: absolute; left: 0; right: 0; top: 104px; }     /* under the date and all-day rows */
+.cal-hour { position: relative; height: 54px; margin-left: 64px; border-top: 1px solid #ececef; }
+.cal-hour::after { content: ""; position: absolute; left: 0; right: 0; top: 27px; border-top: 1px dotted #f0f0f2; }
+.cal-hour b { position: absolute; left: -54px; top: -8px; width: 44px; text-align: right; color: var(--mac-muted); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.cal-ev { position: absolute; left: 70px; right: 10px; padding: 4px 9px; border-radius: 5px; overflow: hidden;
+  background: rgb(175 82 222 / 0.16); border-left: 3px solid #af52de; color: #6a2b92; font-size: 12.5px; line-height: 1.35; }
+.cal-ev b { display: block; font-weight: 600; }
+.cal-ev.short span { display: none; }                                /* half an hour: the title alone */
+.cal-ev.on { background: #af52de; color: #fff; }
+#cal-now { position: absolute; left: 58px; right: 0; height: 0; border-top: 1.5px solid #ff3b30; z-index: 2; }
+#cal-now::before { content: ""; position: absolute; left: -4px; top: -4.5px; width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; }
+#cal-now b { position: absolute; left: -54px; top: -8px; width: 40px; text-align: right; color: #ff3b30; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; background: #fff; }
+.cal-info { padding: 12px 22px; font-size: 13px; overflow: hidden; }
+.mm-head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 700; font-size: 14px; }
+.mm-head span { color: #8e8e93; font-weight: 500; letter-spacing: 0.3em; }
+.mm { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 1px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.mm .dow { color: var(--mac-muted); font-size: 10.5px; font-weight: 600; }
+.mm i { font-style: normal; display: grid; place-items: center; width: 22px; height: 22px; margin: 0 auto; border-radius: 50%; }
+.mm i.today { background: #ff3b30; color: #fff; font-weight: 700; }
+.mm i.we { color: var(--mac-muted); }
+#cal-detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ececef; }
+#cal-detail[hidden] { display: none; }
+#cal-detail h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.cd-when { margin-top: 4px; color: #3a3a3c; font-size: 12.5px; }
+.cd-cal { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 12.5px; }
+.cd-cal i { width: 9px; height: 9px; border-radius: 50%; background: #af52de; }
+.cd-notes-label { margin-top: 10px; color: var(--mac-muted); font-size: 11px; font-weight: 600; }
+.cd-notes { margin-top: 3px; white-space: pre-wrap; font-size: 11.5px; line-height: 1.4; color: #2c2c2e; }
+
+/* Calendar's alert when a block starts, as the Mail banner */
+#cal-banner .b-icon { background: none; }
+#cal-banner .b-icon svg { width: 38px; height: 38px; }
+#cal-banner .b-top b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#cal-banner .b-top time { flex: none; margin-left: 10px; }
+#cal-banner .b-main { flex: 1; }                                    /* "now" at the right edge, as macOS sets it */
+
+/* ---------------------------------------------------------------- the notch's window */
+/* The Freebyrd window hangs from the notch, centered on it (notch.rs): here
+   it spans the screen, so #island (left: 50%) sits on the notch. */
+#fb { position: absolute; left: 0; top: 0; width: 1512px; height: 982px; pointer-events: none; }
+#caret { position: absolute; width: 2px; height: 21px; border-radius: 1px; background: #0a84ff; opacity: 0; }
+#measure { position: absolute; visibility: hidden; white-space: pre; font: inherit; font-size: 17px; letter-spacing: -0.01em; }
+
+/* the film steps every transition and animation itself (seek), from the
+   curves in style.css */
+html.film #fb *, html.film #fb *::before, html.film #fb *::after { transition: none !important; animation: none !important; }
+html.film #question { caret-color: transparent; }
+html.film #bar { position: relative; }
+html.film .reply.streaming > :is(p, h3, blockquote):not([class]):last-child::after,
+html.film .reply.streaming > :is(ul, ol):last-child > li:last-child::after {
+  opacity: var(--sd-o, 1); transform: scale(var(--sd-s, 1));
+}
+
+/* ---------------------------------------------------------------- cursor */
+#cursor { position: absolute; left: 0; top: 0; width: 22px; height: 30px; opacity: 0; transform-origin: 2px 2px; filter: drop-shadow(0 1.5px 2.5px rgb(0 0 0 / 0.32)); }
+
+/* ---------------------------------------------------------------- board look */
+/* A flat stand-in for the laptop, only to judge framing on the boards;
+   Blender builds the real one around the screen. */
+#mock { position: absolute; left: 0; top: 0; pointer-events: none; }
+#mock .lid { position: absolute; left: -31px; top: -27px; width: 1574px; height: 1118px; border-radius: 46px 46px 20px 20px; background: #050506; box-shadow: 0 0 0 4px #9fa3aa, 0 0 0 5px #6d7178; }
+#mock .base { position: absolute; left: -64px; top: 1095px; width: 1640px; height: 380px; clip-path: polygon(3% 0, 97% 0, 100% 86%, 100% 100%, 0 100%, 0 86%); background: linear-gradient(180deg, #8d9198 0%, #b9bdc3 30%, #c9ccd1 82%, #8e9298 86%, #5d6167 100%); }
+#mock .keys { position: absolute; left: 260px; top: 1120px; width: 1000px; height: 150px; clip-path: polygon(1.5% 0, 98.5% 0, 100% 100%, 0 100%); background: repeating-linear-gradient(90deg, #1a1b1e 0 60px, #2a2b2f 60px 64px); opacity: 0.9; }
+#grain { position: absolute; inset: -50%; pointer-events: none; opacity: 0.16; mix-blend-mode: hard-light;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1.1 -0.05'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="cam">
+    <div id="mock"><div class="base"></div><div class="keys"></div><div class="lid"></div></div>
+    <div id="screen">
+      <div id="desktop">
+        <div id="menubar">
+          <div class="menus"><b>Mail</b><span>File</span><span>Edit</span><span>View</span><span>Mailbox</span><span>Message</span><span>Format</span><span>Window</span><span>Help</span></div>
+          <div class="extras">
+            <!-- battery, wifi, control centre: solid, monochrome -->
+            <svg viewBox="0 0 27 13"><rect x="0.6" y="0.6" width="22.8" height="11.8" rx="3.4" fill="none" stroke="#1d1d1f" stroke-opacity="0.45" stroke-width="1.2"/><rect x="2.4" y="2.4" width="16" height="8.2" rx="1.8"/><path d="M24.8 4.4c1 .3 1.6 1.1 1.6 2.1s-.6 1.8-1.6 2.1Z" fill-opacity="0.45"/></svg>
+            <svg viewBox="0 0 18 13"><path d="M9 2.2c2.6 0 5 1 6.8 2.7a.7.7 0 0 0 1 0l.6-.6a.7.7 0 0 0 0-1A11.3 11.3 0 0 0 9 0 11.3 11.3 0 0 0 .6 3.3a.7.7 0 0 0 0 1l.6.6a.7.7 0 0 0 1 0A9.8 9.8 0 0 1 9 2.2Zm0 3.6c1.6 0 3.1.6 4.3 1.7a.7.7 0 0 0 1 0l.6-.6a.7.7 0 0 0 0-1A8 8 0 0 0 9 3.6a8 8 0 0 0-5.9 2.3.7.7 0 0 0 0 1l.6.6a.7.7 0 0 0 1 0A6.2 6.2 0 0 1 9 5.8Zm0 3.5c.6 0 1.2.2 1.7.6a.7.7 0 0 1 .1 1.1L9.5 12.3a.7.7 0 0 1-1 0L7.2 11a.7.7 0 0 1 .1-1.1c.5-.4 1.1-.6 1.7-.6Z"/></svg>
+            <svg viewBox="0 0 16 13"><rect x="0" y="0" width="16" height="5.6" rx="2.8" fill-opacity="0.85"/><circle cx="12.6" cy="2.8" r="1.9" fill="#f6f6f8"/><rect x="0" y="7.4" width="16" height="5.6" rx="2.8" fill-opacity="0.85"/><circle cx="3.4" cy="10.2" r="1.9" fill="#f6f6f8"/></svg>
+            <span id="clock">Wed 14 Oct&nbsp;&nbsp;09:12</span>
+          </div>
+        </div>
+
+        <div id="mail">
+          <aside class="side">
+            <div class="lights" id="lights"><i></i><i></i><i></i></div>
+            <h5>Favorites</h5>
+            <div class="mb on"><svg viewBox="0 0 24 24"><path d="M4.5 4h15A2.5 2.5 0 0 1 22 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 17.5v-11A2.5 2.5 0 0 1 4.5 4Zm-.5 9v4.5c0 .3.2.5.5.5h15c.3 0 .5-.2.5-.5V13h-4.1a4 4 0 0 1-7.8 0Z"/></svg><span>Inbox</span><em id="inbox-count">3</em></div>
+            <div class="mb"><svg viewBox="0 0 24 24"><path d="M5 2.5a1 1 0 0 1 1 1V4h11.6a1 1 0 0 1 .8 1.6L16 9l2.4 3.4a1 1 0 0 1-.8 1.6H6v6.5a1 1 0 1 1-2 0v-17a1 1 0 0 1 1-1Z"/></svg><span>Flagged</span></div>
+            <div class="mb"><svg viewBox="0 0 24 24"><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.5V8a1 1 0 0 0 1 1h4.5Z"/></svg><span>Drafts</span><em>1</em></div>
+            <div class="mb"><svg viewBox="0 0 24 24"><path d="M21.4 2.6a1 1 0 0 1 .3 1.1l-6.2 17a1 1 0 0 1-1.8.2l-3.5-6.3-6.3-3.5a1 1 0 0 1 .2-1.8l17-6.2a1 1 0 0 1 1.1.3Z"/></svg><span>Sent</span></div>
+            <h5>Halden</h5>
+            <div class="mb"><svg viewBox="0 0 24 24"><path d="M3 4h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm1 7h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Zm5 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2Z"/></svg><span>Archive</span></div>
+            <div class="mb"><svg viewBox="0 0 24 24"><path d="M3 5a2 2 0 0 1 2-2h4.6a2 2 0 0 1 1.4.6L12.4 5H19a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span>Clients</span><em>2</em></div>
+            <div class="mb"><svg viewBox="0 0 24 24"><path d="M3 5a2 2 0 0 1 2-2h4.6a2 2 0 0 1 1.4.6L12.4 5H19a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span>Projects</span></div>
+            <div class="mb"><svg viewBox="0 0 24 24"><path d="M3 5a2 2 0 0 1 2-2h4.6a2 2 0 0 1 1.4.6L12.4 5H19a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span>Receipts</span></div>
+          </aside>
+
+          <section class="list">
+            <header><b>Inbox</b><small id="unread">3 unread</small></header>
+            <div class="slot" id="slot"><div class="row" id="row-nina"><i class="dot" id="nina-dot"></i><div class="top"><b>Nina Park</b><time id="nina-time">09:12</time></div><div class="sub">Launch plan for Thursday</div><div class="pre" id="nina-pre">Thanks for Monday's call. Could you send the revised launch plan before Thursday's review?</div></div></div>
+            <div class="row on" id="row-leo"><div class="top"><b>Leo Grant</b><time>08:47</time></div><div class="sub">SOW: signed copy</div><div class="pre">Signing on our side this week. I'll send the countersigned copy once legal has been through it.</div></div>
+            <div class="row"><i class="dot"></i><div class="top"><b>Asha Rao</b><time>08:30</time></div><div class="sub">Onboarding checklist</div><div class="pre">Do you have the checklist for the pilot team? We'd like to share it before the kickoff.</div></div>
+            <div class="row"><div class="top"><b>Tom Becker</b><time>Yesterday</time></div><div class="sub">Design review notes</div><div class="pre">Attached the notes from yesterday's review. Mostly small things on the pricing page.</div></div>
+            <div class="row"><i class="dot"></i><div class="top"><b>Dev Patel</b><time>Tue</time></div><div class="sub">Pricing tier draft</div><div class="pre">Here's the tier we talked about. Numbers are in the sheet, happy to adjust.</div></div>
+            <div class="row"><div class="top"><b>Nina Park</b><time>Mon</time></div><div class="sub">Pilot scope: notes</div><div class="pre">Notes from today's call. We'd like to start the pilot after the 19th if that works.</div></div>
+            <div class="row"><div class="top"><b>Maria Lopez</b><time>Mon</time></div><div class="sub">Invoice 0142</div><div class="pre">Thanks, this is paid. The receipt is attached for your records.</div></div>
+            <div class="row"><div class="top"><b>Halden</b><time>Sun</time></div><div class="sub">Your week at Halden</div><div class="pre">Three meetings, twelve threads and one launch. Here's what moved this week.</div></div>
+            <div class="row"><div class="top"><b>Tom Becker</b><time>Fri</time></div><div class="sub">Homepage hero options</div><div class="pre">Two directions for the hero. I lean towards the second one, the calmer one.</div></div>
+          </section>
+
+          <section class="reader">
+            <div class="tools">
+              <svg viewBox="0 0 24 24"><path d="M3 4h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm1 7h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Zm5 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2Z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M9 2h6a1 1 0 0 1 1 1v1h4a1 1 0 1 1 0 2h-1l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6H4a1 1 0 0 1 0-2h4V3a1 1 0 0 1 1-1Z"/></svg>
+              <svg viewBox="0 0 24 24" id="reply-btn"><path d="M10.3 4.3a1 1 0 0 1 1.7.7v3c5.6.3 9 3.8 10 10.4a.6.6 0 0 1-1.1.4C19 16 16 14.6 12 14.5V18a1 1 0 0 1-1.7.7l-7-7a1 1 0 0 1 0-1.4Z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M13.7 4.3a1 1 0 0 0-1.7.7v3c-5.6.3-9 3.8-10 10.4a.6.6 0 0 0 1.1.4C5 16 8 14.6 12 14.5V18a1 1 0 0 0 1.7.7l7-7a1 1 0 0 0 0-1.4Z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M6 2.5a1 1 0 0 1 1 1V4h11.6a1 1 0 0 1 .8 1.6L17 9l2.4 3.4a1 1 0 0 1-.8 1.6H7v6.5a1 1 0 1 1-2 0v-17a1 1 0 0 1 1-1Z"/></svg>
+            </div>
+            <div class="body" id="leo-mail">
+              <h1>SOW: signed copy</h1>
+              <div class="count">1 message</div>
+              <div class="msg">
+                <div class="av">LG</div>
+                <div class="who"><div><b>Leo Grant</b> <span>to Sam Ellis</span></div><time>Today, 08:47</time></div>
+                <div class="text"><p>Hi Sam,</p><p>Signing on our side this week. I'll send the countersigned copy once legal has been through it.</p><p>Leo</p></div>
+              </div>
+            </div>
+            <div class="body" id="mail-thread" hidden>
+              <h1>Launch plan for Thursday</h1>
+              <div class="count" id="count">1 message</div>
+              <div class="msg" id="m1"><div class="av">NP</div><div class="who"><div><b>Nina Park</b> <span>to Sam Ellis</span></div><time>Today, 09:12</time></div><div class="text"></div></div>
+              <div class="msg" id="m2" hidden><div class="av me">SE</div><div class="who"><div><b>Sam Ellis</b> <span>to Nina Park</span></div><time>Today, 09:15</time></div><div class="text"></div></div>
+              <div class="msg" id="m3" hidden><div class="av">NP</div><div class="who"><div><b>Nina Park</b> <span>to Sam Ellis</span></div><time>Today, 09:18</time></div><div class="text"></div></div>
+              <div class="msg" id="m4" hidden><div class="av me">SE</div><div class="who"><div><b>Sam Ellis</b> <span>to Nina Park</span></div><time>Today, 09:19</time></div><div class="text"></div></div>
+            </div>
+          </section>
+        </div>
+
+        <div id="banner"><div class="b-icon"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm.4 2.3 7 5.1a1 1 0 0 0 1.2 0l7-5.1Z"/></svg></div><div class="b-main"><div class="b-top"><b>Nina Park</b><time>now</time></div><div class="b-sub">Launch plan for Thursday</div><div class="b-text">Hi Sam, thanks for Monday's call. Could you send the revised launch plan before Thursday's review?</div></div></div>
+
+        <div id="compose" hidden>
+          <div class="c-bar">
+            <div class="lights" id="c-lights"><i></i><i></i><i></i></div>
+            <div class="c-send" id="c-send"><svg viewBox="0 0 24 24"><path d="M21.4 2.6a1 1 0 0 1 .3 1.1l-6.2 17a1 1 0 0 1-1.8.2l-3.5-6.3-6.3-3.5a1 1 0 0 1 .2-1.8l17-6.2a1 1 0 0 1 1.1.3Z"/></svg></div>
+            <span class="c-title">Re: Launch plan for Thursday</span>
+            <div class="c-tools">
+              <svg viewBox="0 0 24 24"><path d="M16.5 6.5 9 14a1.5 1.5 0 0 0 2.1 2.1l8-8a3.5 3.5 0 0 0-5-5l-8.2 8.2a5.5 5.5 0 0 0 7.8 7.8l6.4-6.4-1.4-1.4-6.4 6.4a3.5 3.5 0 0 1-5-5L15.5 4.9a1.5 1.5 0 0 1 2.1 2.1l-8 8-.1-.1 7.5-7.5Z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M5 4h7.5a4.5 4.5 0 0 1 3.2 7.7A4.8 4.8 0 0 1 14.3 20H5Zm3 3v3.5h4.4a1.75 1.75 0 1 0 0-3.5Zm0 6.4V17h5.7a1.8 1.8 0 0 0 0-3.6Z"/></svg>
+            </div>
+          </div>
+          <div class="c-field"><label>To:</label><span class="token">Nina Park</span></div>
+          <div class="c-field"><label>Cc:</label></div>
+          <div class="c-field"><label>Subject:</label><span>Re: Launch plan for Thursday</span></div>
+          <div class="c-body">
+            <div class="c-text"><span id="c-text"></span><i id="c-caret"></i></div>
+            <div class="c-quote"><p id="c-on"></p><blockquote id="c-quoted"></blockquote></div>
+          </div>
+        </div>
+
+        <div id="cal" hidden>
+          <div class="cal-bar">
+            <div class="lights" id="cal-lights"><i></i><i></i><i></i></div>
+            <svg viewBox="0 0 24 24"><path d="M5 3h14a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h3V5Z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 4a1 1 0 0 1 1 1v6h6a1 1 0 1 1 0 2h-6v6a1 1 0 1 1-2 0v-6H5a1 1 0 1 1 0-2h6V5a1 1 0 0 1 1-1Z"/></svg>
+            <div class="cal-seg"><span class="on">Day</span><span>Week</span><span>Month</span><span>Year</span></div>
+            <svg class="right" viewBox="0 0 24 24"><path d="M10.5 3a7.5 7.5 0 0 1 6 12l4.2 4.3a1 1 0 0 1-1.4 1.4L15 16.5A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+          </div>
+          <div class="cal-main">
+            <aside class="cal-side">
+              <h5>iCloud</h5>
+              <div class="cal-list">
+                <div class="cal-check" style="--c:#0a84ff"><i></i>Home</div>
+                <div class="cal-check" style="--c:#34c759"><i></i>Work</div>
+                <div class="cal-check" style="--c:#af52de"><i></i>Freebyrd</div>
+              </div>
+              <h5>Other</h5>
+              <div class="cal-list">
+                <div class="cal-check" style="--c:#8e8e93"><i></i>Birthdays</div>
+                <div class="cal-check" style="--c:#ff9500"><i></i>UK Holidays</div>
+              </div>
+            </aside>
+            <section class="cal-day">
+              <header class="cal-head"><b>14 October 2026</b><span>Wednesday</span></header>
+              <div class="cal-allday"></div>
+              <div class="cal-grid" id="cal-grid"><div id="cal-now"><b></b></div></div>
+            </section>
+            <aside class="cal-info">
+              <div class="mm-head">October 2026<span>‹ ›</span></div>
+              <div class="mm" id="mm"></div>
+              <div id="cal-detail" hidden>
+                <h3 id="cd-title"></h3>
+                <div class="cd-when" id="cd-when"></div>
+                <div class="cd-cal"><i></i>Freebyrd</div>
+                <div class="cd-notes-label">Notes</div>
+                <div class="cd-notes" id="cd-notes"></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <div id="spot" hidden>
+          <div class="sp-bar"><svg viewBox="0 0 24 24"><path d="M10.5 3a7.5 7.5 0 0 1 6 12l4.2 4.3a1 1 0 0 1-1.4 1.4L15 16.5A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg><span id="sp-text"></span><i id="sp-caret"></i></div>
+          <div class="sp-results" id="sp-results" hidden>
+            <div class="sp-row on"><svg class="app-icon" viewBox="0 0 30 30"><rect x="1" y="1" width="28" height="28" rx="6.5" fill="#fff" stroke="#d1d1d6" stroke-width="0.6"/><path d="M1 7.5a6.5 6.5 0 0 1 6.5-6.5h15A6.5 6.5 0 0 1 29 7.5V10H1Z" fill="#ff3b30"/><text x="15" y="8.3" font-size="5.6" font-weight="700" fill="#fff" text-anchor="middle" font-family="-apple-system, sans-serif">WED</text><text x="15" y="24.5" font-size="13" font-weight="600" fill="#1d1d1f" text-anchor="middle" font-family="-apple-system, sans-serif">14</text></svg><b>Calendar</b><span>Application</span></div>
+            <div class="sp-row"><svg class="app-icon" viewBox="0 0 30 30"><rect x="1" y="1" width="28" height="28" rx="6.5" fill="#3a3a3c"/><rect x="5.5" y="5" width="19" height="6" rx="1.5" fill="#8e8e93"/><g fill="#ff9f0a"><circle cx="8" cy="16" r="2.2"/><circle cx="15" cy="16" r="2.2"/><circle cx="22" cy="16" r="2.2"/><circle cx="8" cy="23" r="2.2"/><circle cx="15" cy="23" r="2.2"/><circle cx="22" cy="23" r="2.2"/></g></svg>Calculator<span>Application</span></div>
+          </div>
+        </div>
+
+        <div id="cal-banner"><div class="b-icon"><svg viewBox="0 0 30 30"><rect x="1" y="1" width="28" height="28" rx="6.5" fill="#fff" stroke="#d1d1d6" stroke-width="0.6"/><path d="M1 7.5a6.5 6.5 0 0 1 6.5-6.5h15A6.5 6.5 0 0 1 29 7.5V10H1Z" fill="#ff3b30"/><text x="15" y="8.3" font-size="5.6" font-weight="700" fill="#fff" text-anchor="middle" font-family="-apple-system, sans-serif">WED</text><text x="15" y="24.5" font-size="13" font-weight="600" fill="#1d1d1f" text-anchor="middle" font-family="-apple-system, sans-serif">14</text></svg></div><div class="b-main"><div class="b-top"><b>Revised launch plan for Nina</b><time>now</time></div><div class="b-sub">Today, 09:30 to 11:00</div><div class="b-text">Freebyrd</div></div></div>
+      </div>
+
+      <div id="fb"><!-- #island from ui/index.html goes here --></div>
+
+      <div id="notch"></div>
+      <svg id="cursor" viewBox="0 0 22 30"><path d="M2.2 2.2v21.6l5.5-5.3 3.6 8.5 3.5-1.5-3.6-8.3h7.6Z" fill="#000" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+  <div id="grain"></div>
+</div>
+
+<script>
+/* Tauri, stubbed: the page runs as in the app, but nothing answers (every
+ * invoke and listen waits forever), and the film steps the island itself,
+ * so app.js gets no animation frames. */
+window.__filmRaf = window.requestAnimationFrame.bind(window);
+window.requestAnimationFrame = () => 0;
+window.__TAURI__ = {
+  core: { invoke: () => new Promise(() => {}) },
+  event: { listen: () => new Promise(() => {}) },
+};
+/* the island's own markup, read from ui/index.html */
+(() => {
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", "../crates/freebyrd/ui/index.html", false);
+  xhr.send();
+  const doc = new DOMParser().parseFromString(xhr.responseText, "text/html");
+  document.getElementById("fb").append(document.importNode(doc.getElementById("island"), true));
+})();
+</script>
+<script src="../crates/freebyrd/ui/app.js"></script>
+<script src="../crates/freebyrd/ui/night.js"></script>
+<script>
+(() => {
+/* ------------------------------------------------------------------ time kit */
+const Q = new URLSearchParams(location.search);
+const MODE = Q.get("mode") || "board";
+document.documentElement.classList.add("film", `film-${MODE}`);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, x) => a + (b - a) * x;
+/* CSS's cubic-bezier, solved for x */
+function bezier(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = s => ((ax * s + bx) * s + cx) * s, Y = s => ((ay * s + by) * s + cy) * s, dX = s => (3 * ax * s + 2 * bx) * s + cx;
+  return x => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    let s = x;
+    for (let i = 0; i < 8; i++) { const d = dX(s); if (Math.abs(d) < 1e-6) break; s -= (X(s) - x) / d; }
+    s = clamp(s);
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 30 && Math.abs(X(s) - x) > 1e-6; i++) { if (X(s) < x) lo = s; else hi = s; s = (lo + hi) / 2; }
+    return Y(s);
+  };
+}
+const C = {
+  ease: bezier(0.25, 0.1, 0.25, 1), in: bezier(0.42, 0, 1, 1), out: bezier(0, 0, 0.58, 1), inOut: bezier(0.42, 0, 0.58, 1),
+  pop: bezier(0.3, 1.5, 0.6, 1),      /* .wing, .chip.entering */
+  swell: bezier(0.3, 1.4, 0.6, 1),    /* #island scale (hover) */
+};
+const E = {
+  outCubic: x => 1 - Math.pow(1 - x, 3),
+  inOutCubic: x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2,
+};
+/* a seeded random, so every render jitters the same */
+function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let r = Math.imul(seed ^ (seed >>> 15), 1 | seed); r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r; return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; }
+
+/* The edit: seconds added (or taken out) at quiet moments of the story, as
+ * in film.html; every time in T, the cursor's legs and the steps pass
+ * through S. Empty until this chapter is re-paced. */
+const EDIT = [];
+const S = x => x + EDIT.reduce((a, [at, d]) => a + (x <= at ? 0 : d >= 0 ? d : -Math.min(-d, x - at)), 0);
+
+/* chapter 2 of the day: five steps (render units, not shots) */
+const SS = [9.0, 7.0, 9.0, 6.5, 8.0];
+const STARTS = SS.map((_, i) => +S(SS.slice(0, i).reduce((x, y) => x + y, 0)).toFixed(3));
+const DUR = +S(SS.reduce((x, y) => x + y, 0)).toFixed(3);
+
+/* ------------------------------------------------------------------ what happens when (seconds) */
+const T = {
+  tick1: 0.8,                                   /* 09:20 */
+  hover1: 2.0, click1: 2.3, open1: 2.37, arrive1: 2.65, ready1: 2.85,   /* the notch, over Mail: Up next is the promise */
+  list: 3.9,                                    /* the checklist icon: To do */
+  waiting: 6.8,                                 /* Waiting on */
+  unlist: 9.0,                                  /* the icon again: the list closes */
+  planAsk: 9.85, ask: 9.92,                     /* "Plan my day" */
+  plan: 11.6,                                   /* the day as blocks, from the list */
+  add1: 14.45, added1: 16.0,                    /* the launch plan: its agenda written, on the calendar */
+  tick2: 17.0,                                  /* 09:21 */
+  scroll1: [18.4, 19.0],                        /* down to Asha's checklist */
+  add2: 19.4, added2: 20.4,                     /* Asha's checklist, with its agenda */
+  add3: 20.9, added3: 21.25,                    /* lunch */
+  add4: 21.75, added4: 22.75,                   /* the pricing section, with its agenda */
+  scroll2: [23.0, 23.5],                        /* down to the walk */
+  add5: 23.9, added5: 24.25,                    /* a walk */
+  spot: 25.0, fold1: 25.0,                      /* ⌘Space: Spotlight takes the keys, the notch folds */
+  type: [25.25, 25.65], enter: 26.0, cal: 26.05,  /* "Cal", Return: Calendar */
+  tick3: 26.5,                                  /* 09:22 */
+  select: 27.95,                                /* the launch plan's block: its notes, the agenda */
+  lapse: [31.5, 33.5],                          /* the minutes to 09:30 */
+  alert: 33.7,                                  /* the block starts: Calendar's alert */
+  hover2: 35.3, click2: 35.6, open2: 35.67, arrive2: 35.95, ready2: 36.15,  /* the notch: Up next, Draft it */
+};
+for (const k in T) T[k] = Array.isArray(T[k]) ? T[k].map(S) : S(T[k]);
+
+/* ------------------------------------------------------------------ the data: the same made-up morning */
+/* chapter 1's last frame, where this one starts */
+const NINA_1 = "Hi Sam,\n\nThanks for Monday's call. Could you send the revised launch plan before Thursday's review? Ideally with the new pricing tier, and a start date for the onboarding pilot.\n\nThanks,\nNina";
+const DRAFT = "Hi Nina,\n\nYes, I'll send the revised launch plan by Thursday noon, with the new pricing tier on page 4.\n\nFor the pilot, could we start on Monday the 26th? Your team said after the 19th when we spoke on Monday.\n\nBest,\nSam";
+const NINA_2 = "Monday the 26th works for us. Could we do the kickoff at 10:00 that day?\n\nNina";
+const BOOKED = "Booked for the 26th at 10:00. See you then!\n\nSam";
+const THREAD_SCROLL = 280;                      /* film.html's scroll once the booking has landed */
+
+const MAIL_SCREEN = {
+  appName: "Mail", windowTitle: "Launch plan for Thursday", source: "accessibility", elapsedMs: 38, truncated: false,
+  text: `Launch plan for Thursday\n${NINA_1}\n\n${DRAFT}\n\n${NINA_2}\n\n${BOOKED}`,
+};
+MAIL_SCREEN.inView = MAIL_SCREEN.text;
+/* the day in Calendar: the blocks added here, and the Halden call (added earlier, from an email) */
+const DAY = [
+  { id: "ev-plan", at: "09:30", end: "11:00", title: "Revised launch plan for Nina" },
+  { id: "ev-asha", at: "11:00", end: "11:45", title: "Pilot onboarding checklist for Asha" },
+  { id: "ev-halden", at: "12:00", end: "12:45", title: "Halden call", sub: "Nina Park, Tom Becker" },
+  { id: "ev-lunch", at: "12:45", end: "13:30", title: "Lunch, away from the desk" },
+  { id: "ev-pricing", at: "14:00", end: "16:00", title: "Launch page: pricing section" },
+  { id: "ev-walk", at: "16:15", end: "16:45", title: "A walk" },
+];
+const CAL_SCREEN = {
+  appName: "Calendar", windowTitle: "Calendar", source: "accessibility", elapsedMs: 52, truncated: false,
+  text: `Wednesday, 14 October 2026\n${DAY.map(e => `${e.at} to ${e.end}: ${e.title}`).join("\n")}`,
+};
+CAL_SCREEN.inView = CAL_SCREEN.text;
+/* quick.rs: Mail's two, Calendar's one, and early in the day Plan my day */
+const PLAN_ASK = { label: "Plan my day", question: "Plan my day: what is due, what is still open from yesterday, and what to do first.", plan: true };
+const MAIL_ASKS = [
+  { label: "Draft a reply", question: "Draft my reply to the email on screen, in my usual tone." },
+  { label: "What's it waiting on?", question: "What is the email on screen waiting on, and who has to act next?" },
+  PLAN_ASK,
+];
+const CAL_ASKS = [
+  { label: "Prep my next meeting", question: "Prep me for my next meeting: who it is with, what we discussed last time, and what is still open." },
+  PLAN_ASK,
+];
+
+/* plans.rs's Up next: the promise from chapter 1, the soonest thing due (the
+   Halden call is more than 2 hours off, so it does not take the line) */
+const UP_NEXT = {
+  id: 41, kind: "promise", title: "Send Nina the revised launch plan", when: "Due tomorrow, 12:00", overdue: false, more: 2, source: "Mail",
+  actions: [{ id: "ask", label: "Draft it" }, { id: "hide", label: "Not today" }, { id: "done", label: "Done" }],
+  question: "Help me deliver the promise under “Up next” at the top of the memory: what I have already done toward it, what is still missing, and a draft of it, or of an update, that I can send.",
+};
+
+/* todos.rs's list: Sam's promises and Notion tasks, and what others owe */
+const mine = (id, title, who, when, source, ask) => ({
+  id, title, who, when, overdue: false, source, focus: `plan:${id}`,
+  actions: [{ id: "done", label: "Done" }, { id: "ask", label: ask }, { id: "hide", label: "Not today" }],
+});
+const theirs = (id, title, who, source) => ({
+  id, title, who, when: "", overdue: false, source,
+  actions: [{ id: "done", label: "Done" }, { id: "ask", label: "Draft a check-in" }],
+});
+const LIST = {
+  badge: { open: 4, count: 0, overdue: false },
+  mine: [
+    { label: "This week", items: [
+      mine(41, "Send Nina the revised launch plan", "Nina Park", "Due tomorrow, 12:00", "Mail, 09:15", "Draft it"),
+      mine(52, "Pilot onboarding checklist", "Asha Rao", "Due Fri 16 Oct", "Notion: Halden pilot", "Help me finish"),
+      mine(53, "Launch page: pricing section", null, "Due Fri 16 Oct", "Notion: Launch tasks", "Help me finish"),
+    ] },
+    { label: "No date", items: [
+      mine(54, "Send Tom the pricing page fixes", "Tom Becker", "", "yesterday's design review", "Draft it"),
+    ] },
+  ],
+  waiting: [
+    theirs(61, "Countersigned SOW", "Leo Grant", "Mail, 08:47"),
+    theirs(62, "Final hero image for the launch page", "Tom Becker", "yesterday's design review"),
+  ],
+  people: [],
+  done: [],
+};
+
+/* day.rs: the rest of the day as blocks, from the list, around the Halden call (fixed) */
+const block = (id, range, category, title, time, minutes, why) => ({
+  id, kind: "block", title: range, seenAt: 1, body: why, actions: [{ id: "add", label: "Add to calendar" }],
+  data: { title, date: "2026-10-14", time, minutes, location: null, category },
+});
+const PLAN = {
+  day: "Wed 14 Oct",
+  note: "Your promise to Nina first, while Monday's call is fresh. Asha's checklist before the Halden call at 12:00, the pricing section after lunch.",
+  balance: "Work 4 h 15 min · Breaks 45 min · Life 30 min",
+  cards: [
+    block(71, "09:30–11:00", "work", "Revised launch plan for Nina", "09:30", 90, "Due to Nina tomorrow at noon, with the new tier on page 4."),
+    block(72, "11:00–11:45", "work", "Pilot onboarding checklist for Asha", "11:00", 45, "Asha wants it before the kickoff on the 26th."),
+    block(73, "12:45–13:30", "break", "Lunch, away from the desk", "12:45", 45, "A proper break after the Halden call."),
+    block(74, "14:00–16:00", "work", "Launch page: pricing section", "14:00", 120, "Due Friday; this morning's tier goes in."),
+    block(75, "16:15–16:45", "life", "A walk", "16:15", 30, "Outside before the follow-ups."),
+  ],
+};
+/* plans.rs, once added: the block on the calendar, with a work block's agenda (agenda.rs) */
+const AGENDA = {
+  71: ["Pull Dev's tier numbers and Tom's pricing notes", "Write page 4: the new tier", "Check pages 1 to 3 against Monday's call", "Get it ready to send by tomorrow noon"],
+  72: ["Start from the pilot scope notes", "Who does what in week one", "Send it to Asha"],
+  74: ["Build the new tier's pricing card", "Monthly and yearly switch", "Check it on a phone"],
+};
+const steps = list => list.map((s, i) => `${i + 1}. ${s}`).join("\n");
+const ADDED = Object.fromEntries(PLAN.cards.map(c => [c.id, {
+  id: c.id, kind: "block", title: c.title, seenAt: 1, actions: [{ id: "undo", label: "Undo" }], data: { category: c.data.category },
+  body: `**${c.data.title}**\nOn your calendar for Wed 14 Oct, ${c.data.time}.${AGENDA[c.id] ? `\n\nAgenda in the event:\n${steps(AGENDA[c.id])}` : ""}`,
+}]));
+/* the presses: the card, when, when it settles, and what it says meanwhile (app.js) */
+const ADDS = [
+  [71, T.add1, T.added1, "Writing its agenda…"],
+  [72, T.add2, T.added2, "Writing its agenda…"],
+  [73, T.add3, T.added3, "Adding…"],
+  [74, T.add4, T.added4, "Writing its agenda…"],
+  [75, T.add5, T.added5, "Adding…"],
+];
+const planAt = t => ({ ...PLAN, cards: PLAN.cards.map(c => (ADDS.some(([id, , b]) => id === c.id && t >= b) ? ADDED[c.id] : c)) });
+/* agenda.rs's notes for the launch plan's event */
+const NOTES = `The revised launch plan, ready to send Nina, with the new tier on page 4.\n\nAgenda\n${steps(AGENDA[71])}\n\nWhere it stands\n- Pages 1 to 3 are done\n- Dev's tier numbers are in his sheet\n\nWhy then: Due to Nina tomorrow at noon, with the new tier on page 4.\n\nPlanned with Freebyrd. Undo it from the notch, or delete this event.`;
+
+/* the notch's two openings: over Mail (the list, the plan) and over Calendar (Up next) */
+const LIST_CHANGES = [T.list, T.waiting, T.unlist];
+const EPS = [
+  { hover: T.hover1, click: T.click1, open: T.open1, arrive: T.arrive1, ready: T.ready1, fold: T.fold1, app: "Mail", screen: MAIL_SCREEN, asks: MAIL_ASKS,
+    changes: [...LIST_CHANGES, T.ask, T.plan, ...ADDS.flatMap(([, a, b]) => [a, b])] },
+  { hover: T.hover2, click: T.click2, open: T.open2, arrive: T.arrive2, ready: T.ready2, fold: Infinity, app: "Calendar", screen: CAL_SCREEN, asks: CAL_ASKS,
+    changes: [] },
+];
+const epAt = t => { let e = null; for (const ep of EPS) if (t >= (ep.glow ?? ep.hover ?? ep.open)) e = ep; return e; };
+
+/* "Cal", typed into Spotlight */
+const TYPED = { text: "Cal", times: [T.type[0], (T.type[0] + T.type[1]) / 2, T.type[1]] };
+const typed = t => TYPED.times.filter(x => x <= t).length;
+
+/* ------------------------------------------------------------------ nodes */
+const $ = s => document.querySelector(s);
+const screenEl = $("#screen"), camEl = $("#cam"), cursorEl = $("#cursor");
+const mailEl = $("#mail"), calEl = $("#cal"), spotEl = $("#spot");
+const lights = [...document.querySelectorAll("#lights i")], calLights = [...document.querySelectorAll("#cal-lights i")];
+const paras = text => text.split("\n\n").map(p => { const e = document.createElement("p"); e.textContent = p; return e; });
+$("#m1 .text").replaceChildren(...paras(NINA_1));
+$("#m2 .text").replaceChildren(...paras(DRAFT));
+$("#m3 .text").replaceChildren(...paras(NINA_2));
+$("#m4 .text").replaceChildren(...paras(BOOKED));
+
+/* Mail as chapter 1 left it: the thread with Nina, four messages, scrolled to the booking */
+$("#slot").style.height = `${$("#row-nina").offsetHeight}px`;   /* film.html sizes the slot by her first email's row */
+$("#row-nina").classList.add("on");
+$("#row-leo").classList.remove("on");
+$("#nina-dot").style.visibility = "hidden";
+$("#nina-time").textContent = "09:18";
+$("#nina-pre").textContent = "Monday the 26th works for us. Could we do the kickoff at 10:00 that day?";
+$("#unread").textContent = "3 unread";
+$("#inbox-count").textContent = "3";
+$("#leo-mail").hidden = true;
+$("#mail-thread").hidden = false;
+for (const id of ["#m2", "#m3", "#m4"]) $(id).hidden = false;
+$("#count").textContent = "4 messages";
+$("#mail-thread").style.transform = `translateY(${-THREAD_SCROLL}px)`;
+$("#banner").style.opacity = "0";
+
+/* Calendar's day: the hours, the events, the month */
+const HOUR = 54, FIRST = 8;                     /* px an hour; the grid starts at 08:00 */
+const yOf = hm => { const [h, m] = hm.split(":").map(Number); return (h - FIRST + m / 60) * HOUR; };
+{
+  const grid = $("#cal-grid");
+  for (let h = FIRST; h <= 18; h++) {
+    const row = document.createElement("div");
+    row.className = "cal-hour";
+    row.innerHTML = `<b>${String(h).padStart(2, "0")}:00</b>`;
+    grid.append(row);
+  }
+  for (const e of DAY) {
+    const ev = document.createElement("div");
+    ev.className = "cal-ev";
+    ev.id = e.id;
+    ev.style.top = `${yOf(e.at) + 1}px`;
+    ev.style.height = `${yOf(e.end) - yOf(e.at) - 2}px`;
+    ev.classList.toggle("short", yOf(e.end) - yOf(e.at) < 40);
+    ev.innerHTML = `<b></b><span></span>`;
+    ev.querySelector("b").textContent = e.title;
+    ev.querySelector("span").textContent = `${e.at}–${e.end}${e.sub ? ` · ${e.sub}` : ""}`;
+    grid.append(ev);
+  }
+  const mm = $("#mm");
+  for (const d of ["M", "T", "W", "T", "F", "S", "S"]) mm.insertAdjacentHTML("beforeend", `<span class="dow">${d}</span>`);
+  for (let i = 0; i < 3; i++) mm.insertAdjacentHTML("beforeend", "<i></i>");   /* 1 October 2026 is a Thursday */
+  for (let d = 1; d <= 31; d++) {
+    const dow = (d + 2) % 7;                    /* 0 = Monday */
+    mm.insertAdjacentHTML("beforeend", `<i class="${d === 14 ? "today" : dow >= 5 ? "we" : ""}">${d}</i>`);
+  }
+  $("#cd-title").textContent = DAY[0].title;
+  $("#cd-when").textContent = "Wednesday 14 October 2026, 09:30 to 11:00";
+  $("#cd-notes").textContent = NOTES;
+}
+
+/* the display's corners and the notch, from the measured bezel */
+const BEZEL = (() => { const x = new XMLHttpRequest(); x.open("GET", "bezel.json", false); x.send(); return JSON.parse(x.responseText); })();
+{
+  const SW = BEZEL.screen.w, SH = BEZEL.screen.h, q = BEZEL.screen.top_corner, f = v => v.toFixed(3);
+  const left = [...q].reverse().map(([x, y]) => `L${f(x)},${f(y)}`).join(" ");
+  const right = q.map(([x, y]) => `L${f(SW - x)},${f(y)}`).join(" ");
+  screenEl.style.clipPath = `path("M0,${SH} ${left} ${right} L${SW},${SH} Z")`;
+  const cx = SW / 2, rows = BEZEL.notch.rows, last = rows[rows.length - 1];
+  const down = rows.map(([y, hw]) => `L${f(cx - hw)},${f(y)}`).join(" ");
+  const up = [...rows].reverse().map(([y, hw]) => `L${f(cx + hw)},${f(y)}`).join(" ");
+  $("#notch").style.clipPath = `path("M${f(cx - rows[0][1])},0 ${down} L${f(cx - last[1])},${BEZEL.notch.h} L${f(cx + last[1])},${BEZEL.notch.h} ${up} L${f(cx + rows[0][1])},0 Z")`;
+}
+const caret = document.createElement("i"); caret.id = "caret"; bar.append(caret);
+
+/* ------------------------------------------------------------------ the notch's state at t, built with app.js */
+const planCard = id => thread.querySelectorAll(".plan-cards > .card")[PLAN.cards.findIndex(c => c.id === id)];
+const todoTabOf = label => [...todos.querySelectorAll(".todo-tab")].find(b => b.textContent.startsWith(label));
+let camScaleNow = 1;
+/* the thread scrolled so that `id`'s card sits at its top */
+const scrollTo = id => thread.scrollTop + (planCard(id).getBoundingClientRect().top - thread.getBoundingClientRect().top) / camScaleNow - 10;
+function build(t) {
+  const root = document.documentElement;
+  root.classList.remove("shown", "glow");
+  island.classList.remove("open");
+  const ep = epAt(t);
+  reset(ep?.app ?? "Mail");
+  asking = false;
+  setStatus(false);
+  showWings([], null);
+  showBadge(LIST.badge);
+  if (!ep) return;
+  if (t < ep.open) {                                 /* closed, the pointer over it: hover.rs shows it */
+    root.classList.add("shown");
+    return;
+  }
+  /* open, or folding away with what it showed when it closed */
+  const at = Math.min(t, ep.fold - 1e-3);
+  if (t < ep.fold) island.classList.add("open");
+  setStatus(at < ep.ready);
+  if (at >= ep.ready) showContext(ep.screen);
+  if (at >= ep.arrive) {
+    showQuick(ep.asks);
+    showUpNext(UP_NEXT);
+  }
+  if (ep === EPS[0] && at >= T.list && at < T.unlist) {   /* the checklist icon: the list */
+    todoList = LIST;
+    todoTab = at >= T.waiting ? "waiting" : "mine";
+    toggleTodos(true);                               /* renders it; its refresh waits on Tauri forever */
+  }
+  if (ep === EPS[0] && at >= T.ask) {                /* Plan my day */
+    addTurn(PLAN_ASK.label);
+    if (at < T.plan) {
+      showPending("Planning your day…");
+      asking = true;
+      setStatus(true);
+    } else {
+      extras = [planElement(planAt(at))];
+      planShown = true;
+      question.placeholder = "Change the plan: lighter, gym at 19:00…";
+      render();
+      reply.classList.remove("streaming");
+      for (const [id, a, b, label] of ADDS) {        /* Add pressed: its buttons wait, with what is happening */
+        if (at < a || at >= b) continue;
+        const card = planCard(id);
+        for (const button of card.querySelectorAll(".card-action")) button.disabled = true;
+        card.querySelector(".card-status").textContent = label;
+      }
+      /* the thread reads from the question, then scrolls down the afternoon */
+      const from = thread.scrollTop, mid = scrollTo(72), end = scrollTo(74);
+      const k1 = E.inOutCubic(seg(at, T.scroll1[0], T.scroll1[1])), k2 = E.inOutCubic(seg(at, T.scroll2[0], T.scroll2[1]));
+      thread.scrollTop = lerp(lerp(from, mid, k1), end, k2);
+      updateFades();
+    }
+  }
+  updateSend();
+}
+
+/* ------------------------------------------------------------------ the apps at t: Mail as chapter 1 left it, Spotlight, Calendar */
+const CLOCK = [[0, "09:19"], [T.tick1, "09:20"], [T.tick2, "09:21"], [T.tick3, "09:22"]];
+for (let m = 23; m <= 30; m++) CLOCK.push([lerp(T.lapse[0], T.lapse[1], (m - 22) / 8), `09:${m}`]);   /* the lapse */
+const clockAt = t => CLOCK.filter(([at]) => t >= at).pop()[1];
+const notchFocus = t => EPS.some(ep => t >= ep.click && t < ep.fold);
+const MENUS = {
+  Mail: ["File", "Edit", "View", "Mailbox", "Message", "Format", "Window", "Help"],
+  Calendar: ["File", "Edit", "View", "Window", "Help"],
+};
+let menusFor = null;
+function apps(t) {
+  const now = clockAt(t);
+  $("#clock").textContent = `Wed 14 Oct  ${now}`;     /* two no-break spaces, as film.html */
+  const front = t >= T.cal ? "Calendar" : "Mail";
+  if (menusFor !== front) {
+    menusFor = front;
+    const menus = $("#menubar .menus");
+    menus.replaceChildren(Object.assign(document.createElement("b"), { textContent: front }), ...MENUS[front].map(m => Object.assign(document.createElement("span"), { textContent: m })));
+  }
+  /* Spotlight: in, "Cal" typed, Return, gone */
+  const spotOn = t >= T.spot && t < T.enter + 0.12;
+  spotEl.hidden = !spotOn;
+  if (spotOn) {
+    const o = C.out(seg(t, T.spot, T.spot + 0.15)) * (1 - C.in(seg(t, T.enter, T.enter + 0.12)));
+    spotEl.style.opacity = String(o);
+    spotEl.style.transform = `scale(${lerp(0.97, 1, C.out(seg(t, T.spot, T.spot + 0.15)))})`;
+    const n = typed(t);
+    $("#sp-text").textContent = TYPED.text.slice(0, n);
+    $("#sp-results").hidden = n === 0;
+    const last = n ? TYPED.times[n - 1] : T.spot;
+    $("#sp-caret").style.opacity = (t - last) < 0.5 || ((t - last - 0.5) % 1.06) < 0.53 ? "1" : "0";
+  }
+  /* Calendar opens over Mail */
+  calEl.hidden = t < T.cal;
+  if (!calEl.hidden) {
+    const o = E.outCubic(seg(t, T.cal, T.cal + 0.28));
+    calEl.style.opacity = String(o);
+    calEl.style.transform = `scale(${lerp(0.96, 1, o)})`;
+    /* the now line: by the minute, and through the lapse smoothly */
+    const k = E.inOutCubic(seg(t, T.lapse[0], T.lapse[1]));
+    const y = t < T.lapse[0] ? yOf(now) : lerp(yOf("09:22"), yOf("09:30"), k);
+    $("#cal-now").style.top = `${y}px`;
+    $("#cal-now b").textContent = now;
+    const chosen = t >= T.select;
+    $("#ev-plan").classList.toggle("on", chosen);
+    $("#cal-detail").hidden = !chosen;
+  }
+  /* 09:30: the block's alert, as Calendar shows it, in (0.45 s) and away when the notch opens */
+  const bin = C.out(seg(t, T.alert, T.alert + 0.45)), bout = C.in(seg(t, T.click2, T.click2 + 0.3));
+  const banner = $("#cal-banner");
+  banner.style.transform = `translateX(${(1 - bin + bout) * 380}px)`;
+  banner.style.opacity = String(bin * (1 - bout));
+  /* who has the focus: the notch, Spotlight, or the app in front */
+  const notch = notchFocus(t), spot = spotOn && t < T.enter;
+  const mailActive = !notch && !spot && t < T.cal;
+  const calActive = !notch && !spot && t >= T.cal;
+  mailEl.classList.toggle("inactive", !mailActive);
+  ["#ff5f57", "#febc2e", "#28c840"].forEach((c, i) => {
+    lights[i].style.background = mailActive ? c : "#d6d6da";
+    calLights[i].style.background = calActive ? c : "#d6d6da";
+  });
+}
+
+/* ------------------------------------------------------------------ the island's springs, app.js's own, stepped from t = 0 */
+const contentHeight = () => Math.ceil(content.getBoundingClientRect().height / camScaleNow);
+const RATE = 240;
+let track = null, targets = {};
+
+function precompute() {
+  const saved = camEl.style.transform;
+  camEl.style.transform = "none";
+  camScaleNow = 1;
+  build(0); apps(0);
+  const base = { w: island.offsetWidth, h: island.offsetHeight };
+  const events = [];
+  for (const ep of EPS) {
+    build(ep.open + 1e-4); apps(ep.open + 1e-4);
+    let last = contentHeight();
+    events.push({ t: ep.open, w: OPEN_WIDTH, h: last, s: 0, p: OPEN });
+    for (const c of [...new Set([ep.arrive, ep.ready, ...ep.changes])].sort((a, b) => a - b)) {
+      if (c <= ep.open || c >= ep.fold) continue;
+      build(c + 1e-4); apps(c + 1e-4);
+      const h = contentHeight();
+      if (h !== last) { events.push({ t: c, w: OPEN_WIDTH, h, s: 0, p: GROW }); last = h; }
+    }
+    if (ep.fold < DUR) events.push({ t: ep.fold, w: base.w, h: base.h, s: 0, p: FOLD });
+  }
+  events.sort((a, b) => a.t - b.t);
+
+  const w = new Spring(base.w), h = new Spring(base.h), s = new Spring(0);
+  const n = Math.ceil(DUR * RATE) + 2, W = new Float64Array(n), H = new Float64Array(n), X = new Float64Array(n);
+  let e = 0;
+  for (let i = 0; i < n; i++) {
+    const now = i / RATE;
+    while (e < events.length && events[e].t <= now) {
+      const ev = events[e++];
+      w.to(ev.w, ev.p); h.to(ev.h, ev.p); s.to(ev.s, ev.p);
+    }
+    W[i] = w.value; H[i] = h.value; X[i] = s.value;
+    w.step(1 / RATE); h.step(1 / RATE); s.step(1 / RATE);
+  }
+  track = { W, H, X, events };
+
+  /* where the cursor goes: each target where it is when clicked */
+  const spot = (t, find, dx = 0.5, dy = 0.5) => {
+    build(t); apps(t); size(t);
+    const el = find();
+    if (!el) throw new Error(`no cursor target at ${t}`);
+    const r = rect(el);
+    return { x: r.x + r.w * dx, y: r.y + r.h * dy };
+  };
+  const addOf = id => () => planCard(id)?.querySelector(".card-action.primary");
+  targets = {
+    island1: spot(T.hover1 - 1e-3, () => island, 0.5, 0.55),
+    list: spot(T.list - 1e-3, () => $("#todo-toggle")),
+    waiting: spot(T.waiting - 1e-3, () => todoTabOf("Waiting on")),
+    unlist: spot(T.unlist - 1e-3, () => $("#todo-toggle")),
+    plan: spot(T.planAsk - 1e-3, () => [...quick.querySelectorAll(".quick-ask")].find(b => b.textContent === PLAN_ASK.label)),
+    add1: spot(T.add1 - 1e-3, addOf(71), 0.5, 0.55),
+    add2: spot(T.add2 - 1e-3, addOf(72), 0.5, 0.55),
+    add3: spot(T.add3 - 1e-3, addOf(73), 0.5, 0.55),
+    add4: spot(T.add4 - 1e-3, addOf(74), 0.5, 0.55),
+    add5: spot(T.add5 - 1e-3, addOf(75), 0.5, 0.55),
+    event: spot(T.select - 1e-3, () => $("#ev-plan"), 0.3, 0.45),
+    island2: spot(T.hover2 - 1e-3, () => island, 0.5, 0.55),
+    draft: spot(DUR - 1e-3, () => upnext.querySelector(".card-action.primary")),
+  };
+  buildCams();
+  camEl.style.transform = saved;
+}
+
+function rect(el) {
+  const s = screenEl.getBoundingClientRect(), r = el.getBoundingClientRect(), k = s.width / 1512;
+  return { x: (r.x - s.x) / k, y: (r.y - s.y) / k, w: r.width / k, h: r.height / k };
+}
+
+const trackAt = (arr, t) => { const f = clamp(t, 0, DUR) * RATE, i = Math.min(Math.floor(f), arr.length - 2), u = f - i; return lerp(arr[i], arr[i + 1], u); };
+function size(t) {
+  width.value = trackAt(track.W, t);
+  height.value = trackAt(track.H, t);
+  shift.value = trackAt(track.X, t);
+  paint();                                           /* app.js: size, place, corners */
+}
+
+/* ------------------------------------------------------------------ the look at t: style.css's transitions and animations, by time */
+const tr = (t, t0, dur, ease, a, b, delay = 0) => (t < t0 + delay ? a : lerp(a, b, ease(seg(t, t0 + delay, t0 + delay + dur))));
+const loop = (t, t0, period, ease) => { const p = ((((t - t0) % period) + period) % period) / period; return p < 0.5 ? ease(p * 2) : 1 - ease((p - 0.5) * 2); };
+const appear = (t, t0) => C.out(seg(t, t0, t0 + 0.15));
+
+function look(t) {
+  const ep = epAt(t);
+  /* the island's hover swell (scale 0.3 s), on, then off as it opens */
+  let swell = 0;
+  if (ep?.hover !== undefined && t >= ep.hover) swell = t < ep.open ? C.swell(seg(t, ep.hover, ep.hover + 0.3)) : 1 - C.swell(seg(t, ep.open, ep.open + 0.3));
+  island.style.scale = String(1 + 0.05 * swell);
+  island.style.boxShadow = "";
+
+  /* the content: 160 ms in after 50 ms; 70 ms out */
+  content.style.opacity = !ep || t < ep.open ? "0" : String(t < ep.fold ? C.out(seg(t, ep.open + 0.05, ep.open + 0.21)) : 1 - C.in(seg(t, ep.fold, ep.fold + 0.07)));
+
+  /* things that appear (0.15 s) */
+  if (ep && t >= ep.arrive) for (const n of [quick, upnext]) n.style.opacity = String(appear(t, ep.arrive));
+  if (ep === EPS[0] && t >= T.list && t < T.unlist) todos.style.opacity = String(appear(t, t >= T.waiting ? T.waiting : T.list));
+  if (ep === EPS[0] && t >= T.unlist) for (const n of [quick, upnext]) n.style.opacity = String(appear(t, T.unlist));
+  const asked = thread.querySelector(".asked");
+  if (asked) asked.style.opacity = String(appear(t, T.ask));
+  const plan = thread.querySelector(".day-plan");
+  if (plan) plan.style.opacity = String(appear(t, T.plan));
+  for (const [id, , b] of ADDS) {
+    const card = t >= b && ep === EPS[0] && plan ? planCard(id) : null;
+    if (card) card.style.opacity = String(appear(t, b));
+  }
+
+  /* reading: the dot pulses (1.1 s); busy: the level meter (0.9 s) */
+  const dot = source.querySelector(".dot");
+  if (ep && source.dataset.state === "reading") {
+    const k = loop(t, ep.open, 1.1, C.inOut);
+    dot.style.opacity = String(lerp(1, 0.3, k));
+    dot.style.transform = `scale(${lerp(1, 0.7, k)})`;
+  } else { dot.style.opacity = ""; dot.style.transform = ""; }
+  [0, -0.45, -0.2, -0.65].forEach((d, i) => {
+    const k = loop(t - d, 0, 0.9, C.inOut);
+    status.querySelectorAll(".bars i")[i].style.transform = `scaleY(${lerp(0.3, 1, k)})`;
+  });
+  /* "Planning your day…" shimmers (1.6 s) */
+  const pending = thread.querySelector(".reply .pending");
+  if (pending) pending.style.backgroundPosition = `${100 - ((((t % 1.6) + 1.6) % 1.6) / 1.6) * 100}% 0`;
+
+  /* the question's caret blinks like the Mac's while the notch is open */
+  $("#send").style.opacity = "0";
+  const inBar = question.getBoundingClientRect(), barBox = bar.getBoundingClientRect(), k = camScaleNow;
+  caret.style.left = `${(inBar.x - barBox.x) / k + 1}px`;
+  caret.style.top = `${(inBar.y - barBox.y) / k + (inBar.height / k - 21) / 2}px`;
+  const since = ep ? t - (ep === EPS[0] && t >= T.ask ? T.ask : ep.open) : 0;
+  const blink = since < 0.5 || ((since - 0.5) % 1.06) < 0.53;
+  caret.style.opacity = ep && t >= ep.open + 0.21 && t < ep.fold && blink ? "1" : "0";
+}
+
+/* ------------------------------------------------------------------ the cursor */
+const arc = (p, q, k, lift) => {
+  const c = { x: (p.x + q.x) / 2, y: Math.min(p.y, q.y) - lift };
+  return { x: (1 - k) ** 2 * p.x + 2 * (1 - k) * k * c.x + k * k * q.x, y: (1 - k) ** 2 * p.y + 2 * (1 - k) * k * c.y + k * k * q.y };
+};
+const press = (t, c) => seg(t, c, c + 0.08) * (1 - seg(t, c + 0.1, c + 0.22));
+const CLICKS = () => [T.click1, T.list - 0.05, T.waiting - 0.05, T.unlist - 0.05, T.planAsk, T.add1, T.add2, T.add3, T.add4, T.add5, T.select, T.click2];
+
+/* the cursor's legs: from where it was, to a target, over [a, b] (story time) */
+function pointer(t) {
+  const P = targets;
+  const offIn = { x: 1300, y: 760 };
+  const rest1 = { x: 1110, y: 260 }, rest2 = { x: 1110, y: 330 };   /* right of the notch window, off the text */
+  const rest3 = { x: P.add5.x + 190, y: P.add5.y + 120 };
+  const rest4 = { x: P.event.x - 40, y: P.event.y + 300 };
+  const restUp = { x: P.draft.x + 8, y: P.draft.y + 44 };          /* under Draft it, for chapter 3 */
+  const legs = [
+    [1.2, 2.0, offIn, P.island1, 50],
+    [3.2, 3.75, P.island1, P.list, 20],
+    [6.2, 6.65, P.list, P.waiting, 20],
+    [8.4, 8.85, P.waiting, P.unlist, 20],
+    [9.2, 9.7, P.unlist, P.plan, 30],
+    [11.9, 12.4, P.plan, rest1, 10],
+    [13.8, 14.3, rest1, P.add1, 40],
+    [16.2, 16.6, P.add1, rest2, 10],
+    [18.95, 19.3, rest2, P.add2, 20],
+    [20.5, 20.8, P.add2, P.add3, 15],
+    [21.4, 21.65, P.add3, P.add4, 15],
+    [23.45, 23.8, P.add4, P.add5, 15],
+    [24.4, 24.8, P.add5, rest3, 10],
+    [27.3, 27.8, rest3, P.event, 40],
+    [28.2, 28.7, P.event, rest4, 10],
+    [34.6, 35.25, rest4, P.island2, 60],
+    [36.7, 37.2, P.island2, restUp, 30],
+  ];
+  let p = offIn;
+  for (const [a0, b0, from, to, lift] of legs) {
+    const a = S(a0), b = S(b0);
+    if (t < a) { p = from; break; }
+    p = arc(from, to, E.inOutCubic(seg(t, a, b)), lift);
+  }
+  const o = seg(t, S(1.1), S(1.3));
+  const pr = Math.max(...CLICKS().map(c => press(t, c)));
+  cursorEl.style.opacity = String(o);
+  cursorEl.style.transform = `translate(${p.x - 2}px, ${p.y - 2}px) scale(${1 - 0.1 * pr})`;
+
+  /* what it presses (style.css's :active): Plan my day, Add */
+  const pressScale = c => `scale(${1 - 0.03 * press(t, c)})`;
+  const planBtn = [...quick.querySelectorAll(".quick-ask")].find(b => b.textContent === PLAN_ASK.label);
+  if (planBtn) { planBtn.style.transform = pressScale(T.planAsk); if (t >= T.planAsk - 0.15 && t < T.planAsk + 0.1) planBtn.style.background = "var(--fill-2)"; }
+  for (const [id, a] of ADDS) {
+    const button = thread.querySelector(".plan-cards") ? planCard(id)?.querySelector(".card-action.primary") : null;
+    if (button) button.style.transform = pressScale(a);
+  }
+}
+
+/* ------------------------------------------------------------------ camera
+ * As film.html: keys in screen px, (cx, cy) at the frame centre, vw screen px
+ * across the 20:9 frame. Locked off: chapter 1 ended in this shot and this
+ * chapter holds it, the UI and the cursor doing the moving. */
+function monotone(xs, ys) {
+  const n = xs.length, d = [], m = new Array(n).fill(0);
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (3 * (xs[i + 1] - xs[i - 1])) / ((2 * xs[i + 1] - xs[i] - xs[i - 1]) / d[i - 1] + (xs[i + 1] + xs[i] - 2 * xs[i - 1]) / d[i]);
+  return x => {
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    let i = 0; while (x > xs[i + 1]) i++;
+    const h = xs[i + 1] - xs[i], s = (x - xs[i]) / h;
+    const h00 = 2 * s ** 3 - 3 * s ** 2 + 1, h10 = s ** 3 - 2 * s ** 2 + s, h01 = -2 * s ** 3 + 3 * s ** 2, h11 = s ** 3 - s ** 2;
+    return h00 * ys[i] + h10 * h * m[i] + h01 * ys[i + 1] + h11 * h * m[i + 1];
+  };
+}
+function camera(keys) {
+  const ts = keys.map(k => k.t);
+  const x = monotone(ts, keys.map(k => k.cx)), y = monotone(ts, keys.map(k => k.cy)), z = monotone(ts, keys.map(k => Math.log(k.vw)));
+  return t => ({ cx: x(t), cy: y(t), vw: Math.exp(z(t)) });
+}
+const MAIN = { cx: 756, cy: 335, vw: 1660 };   /* film.html's shot: screen y -38 to 708 */
+let cams = null;
+function buildCams() {
+  const k = (t, v) => ({ t, ...v });
+  cams = camera([k(0, MAIN), k(DUR, MAIN)]);
+}
+const camAt = t => cams(t);
+
+/* the frames where the open notch window leaves the frame (should be none) */
+function check(fps = 30) {
+  const bad = [];
+  for (let f = 0; f < DUR * fps; f++) {
+    const t = f / fps, ep = epAt(t);
+    if (!ep || t < ep.open + 0.25 || t >= ep.fold) continue;
+    const c = camAt(t), hw = c.vw / 2, hh = c.vw * 0.225;
+    const w = trackAt(track.W, t), h = trackAt(track.H, t), x = 756 + trackAt(track.X, t);
+    const inside = x - w / 2 >= c.cx - hw && x + w / 2 <= c.cx + hw && -8 >= c.cy - hh && h <= c.cy + hh;
+    if (!inside) bad.push(+t.toFixed(2));
+  }
+  return bad;
+}
+
+/* ------------------------------------------------------------------ seek */
+function seek(t) {
+  t = clamp(t, 0, DUR);
+  const c = camAt(t);
+  if (MODE === "board") {
+    const Wv = innerWidth, Hv = innerHeight, s = Wv / c.vw;
+    camScaleNow = s;
+    camEl.style.transform = `translate(${Wv / 2 - c.cx * s}px, ${Hv / 2 - c.cy * s}px) scale(${s})`;
+    const g = Math.floor(t * 12) % 8, j = [[0, 0], [-37, 21], [53, -44], [-18, 67], [29, 11], [-61, -23], [14, -58], [44, 38]][g];
+    $("#grain").style.transform = `translate(${j[0]}px, ${j[1]}px)`;
+  }
+  build(t);
+  apps(t);
+  size(t);
+  look(t);
+  pointer(t);
+  window.__t = t;
+}
+
+precompute();
+window.seek = seek;
+window.camAt = camAt;
+window.STEPS = [...STARTS, DUR];
+window.DUR = DUR;
+window.filmCheck = check;
+window.filmFrame = () => new Promise(r => window.__filmRaf(() => window.__filmRaf(r)));
+window.filmEvents = () => track.events;
+const t0 = +(Q.get("t") || 0);
+seek(t0);
+document.fonts.ready.then(() => { precompute(); seek(t0); window.filmReady = true; });
+
+if (Q.has("play")) {
+  const from = +(Q.get("play") || 0), start = performance.now();
+  const tick = now => { seek((from + (now - start) / 1000) % DUR); window.__filmRaf(tick); };
+  window.__filmRaf(tick);
+}
+})();
+</script>
+</body>
+</html>

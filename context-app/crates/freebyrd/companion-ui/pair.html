@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Pair an iPad · Freebyrd</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="icon" href="/icon-192.png">
+  <style>
+    body { overflow: auto; }
+    .page { max-width: 640px; margin: 0 auto; padding: 48px 24px 80px; }
+    .page h1 { margin: 26px 0 6px; font: 700 32px/1.15 var(--display); letter-spacing: -0.025em; }
+    .code { margin: 18px 0 4px; font: 700 64px/1 var(--display); letter-spacing: 0.18em; font-variant-numeric: tabular-nums; }
+    .step { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+    .step:first-child { border-top: 0; }
+    .step > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--fill-2); font-size: 13px; font-weight: 700; }
+    .step b { display: block; margin-bottom: 4px; }
+    .address { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    .address code { padding: 6px 10px; border-radius: 10px; background: var(--fill-2); font: 14px var(--mono); overflow-wrap: anywhere; -webkit-user-select: all; user-select: all; }
+    .page .isl { display: inline-flex; min-width: 150px; }
+    #addresses p { margin: 2px 0 0; }
+    .step small, .step .quiet { display: block; }
+    .switch { appearance: none; position: relative; flex: none; width: 46px; height: 28px; margin: 0; border-radius: 14px; background: var(--fill-2); cursor: pointer; transition: background 0.2s; }
+    .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+    .switch:checked { background: var(--ok); }
+    .switch:checked::after { transform: translateX(18px); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <span class="isl glow" aria-hidden="true"><span class="wing"></span><span class="says">Pair</span><span class="wing"></span></span>
+    <h1>Pair an iPad</h1>
+    <p class="quiet">Freebyrd for iPad shows your cards, to-dos, people, meetings and night shift, and its buttons act here on this Mac. Nothing is kept anywhere else.</p>
+
+    <h2 class="label">The code</h2>
+    <div class="panel">
+      <div class="code" id="code">······</div>
+      <p class="quiet small" id="expires"></p>
+      <div class="actions" style="margin: 0 0 14px"><button class="btn small" id="new-code" type="button">New code</button></div>
+    </div>
+
+    <h2 class="label">On the iPad</h2>
+    <div class="panel">
+      <div class="step"><span>1</span><div><b>Open this address in Safari</b><div id="addresses"></div></div></div>
+      <div class="step"><span>2</span><div><b>Add it to the Home Screen</b><span class="quiet small">Tap Share, then Add to Home Screen. It opens like an app from then on.</span></div></div>
+      <div class="step"><span>3</span><div><b>Open it and type the code</b><span class="quiet small">The code works once and lasts 10 minutes.</span></div></div>
+    </div>
+
+    <h2 class="label">How the iPad reaches this Mac</h2>
+    <div class="panel" id="routes"></div>
+
+    <h2 class="label">What the iPad may see</h2>
+    <div class="panel" id="shown"></div>
+    <p class="faint small" style="margin: 8px 6px">Cards, to-dos, the day plan and night shift are always shown. Never sent to the iPad: what's on this Mac's screen, pictures of its windows, and the text of pages you read.</p>
+
+    <h2 class="label">What the iPad may do</h2>
+    <div class="panel" id="may-do"></div>
+
+    <h2 class="label">Paired</h2>
+    <div class="panel" id="devices"></div>
+    <p class="status" id="status"></p>
+  </main>
+  <script src="/pair.js"></script>
+</body>
+</html>

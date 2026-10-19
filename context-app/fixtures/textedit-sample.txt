@@ -1,0 +1,8 @@
+Phase 0 accessibility probe
+Marker: KESTREL-7341
+
+This document is a known fixture. If ax-probe prints the marker above,
+it read TextEdit's window through the Accessibility API.
+
+Line with unicode: café, naïve, 東京, emoji 🐦
+Last line.

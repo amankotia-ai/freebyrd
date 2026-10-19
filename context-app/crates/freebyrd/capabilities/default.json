@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "The overlay window may listen to app events and call this app's commands.",
+  "windows": ["overlay"],
+  "permissions": ["core:default"]
+}

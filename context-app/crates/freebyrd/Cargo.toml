@@ -1,0 +1,62 @@
+[package]
+name = "freebyrd"
+description = "Freebyrd: double-tap Option in any app to ask about what is on screen"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+capture.workspace = true
+chrono.workspace = true
+claude-cli.workspace = true
+core-foundation-sys.workspace = true
+memory.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rusqlite.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+# The private API lets the window be transparent around the island.
+tauri = { workspace = true, features = ["macos-private-api"] }
+# Already pulled in by Tauri; used for the active app, to hang the overlay
+# from the notch, and to let its page draw at 120 Hz.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = [
+    "NSArray",
+    "NSData",
+    "NSDictionary",
+    "NSError",
+    "NSGeometry",
+    "NSString",
+    "NSValue",
+] }
+objc2-app-kit = { version = "0.3", features = [
+    "NSApplication",
+    "NSBitmapImageRep",
+    "NSEvent",
+    "NSImageRep",
+    "NSPasteboard",
+    "NSResponder",
+    "NSRunningApplication",
+    "NSScreen",
+    "NSWindow",
+    "NSWorkspace",
+    "objc2-core-graphics",
+] }
+# The picture of the window sent with a question (`picture.rs`).
+block2 = "0.6"
+objc2-core-foundation = { version = "0.3", features = ["CFArray", "CFCGTypes", "CFDictionary", "CFNumber", "CFString"] }
+objc2-core-graphics = { version = "0.3", features = ["CGImage", "CGWindow"] }
+objc2-screen-capture-kit = { version = "0.3", default-features = false, features = [
+    "std",
+    "SCScreenshotManager",
+    "SCShareableContent",
+    "SCStream",
+    "block2",
+    "objc2-core-foundation",
+    "objc2-core-graphics",
+] }
+
+[build-dependencies]
+tauri-build.workspace = true

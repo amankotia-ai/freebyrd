@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Freebyrd</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="night.css">
+</head>
+<body>
+  <div id="island">
+    <div id="wings" aria-hidden="true">
+      <span id="wing-left" class="wing left"></span>
+      <span id="wing-right" class="wing right"></span>
+    </div>
+    <div id="clip">
+      <div id="content">
+        <header id="strip">
+          <button id="source" type="button" aria-controls="read" aria-expanded="false">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="app">Screen</span>
+            <svg class="chevron" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.3 3.5h5.4a.6.6 0 0 1 .46.98L5.46 7.68a.6.6 0 0 1-.92 0L1.84 4.48a.6.6 0 0 1 .46-.98Z"/></svg>
+          </button>
+          <div id="status">
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <button id="night-toggle" type="button" aria-controls="night" aria-expanded="false" aria-label="Night shift (mock)" title="Night shift, a mock (⌘N)" tabindex="-1">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 14.2A8.6 8.6 0 0 1 9.8 3.4a.7.7 0 0 0-.9-.86A9.6 9.6 0 1 0 21.46 15.1a.7.7 0 0 0-.86-.9Z"/></svg>
+            </button>
+            <button id="todo-toggle" type="button" aria-controls="todos" aria-expanded="false" aria-label="To-do list" title="To-do list (⌘T)" tabindex="-1">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z M16.7 8.3a1 1 0 0 0-1.4 0l-4.8 4.8-1.8-1.8a1 1 0 1 0-1.4 1.4l2.5 2.5a1 1 0 0 0 1.4 0l5.5-5.5a1 1 0 0 0 0-1.4Z"/></svg>
+              <span id="todo-count" hidden></span>
+            </button>
+          </div>
+        </header>
+
+        <form id="bar" autocomplete="off">
+          <input id="question" type="text" placeholder="Ask about this screen or your work" aria-label="Question" spellcheck="false" autofocus>
+          <button id="send" type="submit" aria-label="Ask" tabindex="-1">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6a.9.9 0 0 1 .64.26l4 4a.9.9 0 1 1-1.28 1.28L8.9 5.67V13a.9.9 0 0 1-1.8 0V5.67L4.64 8.14a.9.9 0 1 1-1.28-1.28l4-4A.9.9 0 0 1 8 2.6Z"/></svg>
+          </button>
+        </form>
+
+        <section id="todos" aria-label="To-do list" hidden></section>
+
+        <section id="night" aria-label="Night shift (mock)" hidden></section>
+
+        <nav id="quick" aria-label="Quick asks" hidden></nav>
+
+        <section id="upnext" aria-label="Up next" hidden></section>
+
+        <section id="cards" aria-label="From Freebyrd" hidden></section>
+
+        <section id="read" hidden>
+          <p id="read-meta"></p>
+          <pre id="read-text"></pre>
+          <p id="view-meta"></p>
+          <pre id="view-text"></pre>
+          <img id="read-picture" alt="The window, as sent with your question" hidden>
+          <p id="memory-meta"></p>
+          <pre id="memory-text"></pre>
+        </section>
+
+        <section id="thread" aria-label="Conversation" aria-live="polite" hidden></section>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="night.js"></script>
+</body>
+</html>

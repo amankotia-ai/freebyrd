@@ -1,0 +1,1273 @@
+/* A black island that opens out of the notch, the way the Dynamic Island
+   does. The window is transparent and hangs from the top of the screen,
+   centered on the notch (notch.rs). Closed, the island is exactly the notch's
+   size and color, so it disappears into it; open, it grows sideways and down.
+   app.js sizes it with springs, stepped once per display frame (120 Hz on
+   ProMotion; frame_rate.rs). The window is only as tall as the island (`fit`
+   in main.rs). */
+
+:root {
+  /* The notch's size, set by app.js each time the overlay opens. */
+  --notch-w: 185px;
+  --notch-h: 32px;
+
+  --width: 600px; /* the open island */
+  --radius: 28px; /* its bottom corners */
+  --ear: 8px; /* the curve that joins it to the top edge */
+
+  --text: rgb(255 255 255 / 0.92);
+  --text-2: rgb(255 255 255 / 0.55);
+  --text-3: rgb(255 255 255 / 0.32);
+  --fill: rgb(255 255 255 / 0.08);
+  --fill-2: rgb(255 255 255 / 0.14);
+  --line: rgb(255 255 255 / 0.1);
+  --accent: #0a84ff;
+  --ok: #32d74b;
+  --warn: #ff9f0a;
+  --error: #ff6961;
+
+
+  color-scheme: dark;
+}
+
+@supports (color: -apple-system-control-accent) {
+  :root { --accent: -apple-system-control-accent; }
+}
+
+* { box-sizing: border-box; }
+
+/* `hidden` hides, even where a rule below sets `display` (#cards, #quick). */
+[hidden] { display: none !important; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* The island. */
+
+/* Width, height and corner radius are set by app.js on every frame. */
+#island {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--notch-w);
+  height: var(--notch-h);
+  translate: -50% 0;
+  border-radius: 0 0 10px 10px;
+  background: #000;
+  transform-origin: 50% 0;
+  transition: opacity 0.12s, scale 0.3s cubic-bezier(0.3, 1.4, 0.6, 1);
+}
+
+/* Screens without a notch: the island drops from the top edge instead. */
+.flat #island:not(.open) { opacity: 0; }
+
+#island::before,
+#island::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: var(--ear);
+  height: var(--ear);
+}
+
+#island::before {
+  right: 100%;
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--ear) - 0.5px), #000 var(--ear));
+}
+
+#island::after {
+  left: 100%;
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--ear) - 0.5px), #000 var(--ear));
+}
+
+/* `clip`, not `hidden`: focusing the question must not scroll the content
+   while the island is still small. */
+#clip {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  border-radius: inherit;
+}
+
+/* Laid out at the open width from the start, so opening reveals it rather
+   than reflowing it. */
+#content {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  width: var(--width);
+  max-height: 540px;
+  padding-bottom: 4px;
+  translate: -50% 0;
+  opacity: 0;
+  transition: opacity 70ms ease-in;
+}
+
+/* The island leads and the content follows, sharp throughout: opacity only,
+   which the compositor animates without redrawing the text. */
+#island.open #content {
+  opacity: 1;
+  transition: opacity 160ms ease-out 50ms;
+}
+
+/* Beside the notch: where the answer comes from, and what is happening. */
+
+#strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: max(var(--notch-h), 30px);
+  padding: 0 14px;
+}
+
+#source,
+#status {
+  max-width: calc((var(--width) - var(--notch-w)) / 2 - 22px);
+}
+
+#source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 0.15s;
+}
+
+#source:hover,
+#source[aria-expanded="true"] { background: var(--fill-2); }
+
+#source:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+#app {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+
+#source[data-state="reading"] .dot { background: var(--text-2); animation: pulse 1.1s ease-in-out infinite; }
+#source[data-state="ready"] .dot { background: var(--ok); }
+#source[data-state="withheld"] .dot { background: var(--warn); }
+
+/* Icons are always solid. */
+.chevron {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  fill: var(--text-2);
+  transition: transform 0.15s;
+}
+
+#source[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+
+#status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The to-do list's icon, with what is overdue or due today, in orange when
+   anything is overdue. Solid, like every icon. */
+#todo-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+#todo-toggle:hover,
+#todo-toggle[aria-expanded="true"] { background: var(--fill-2); color: var(--text); }
+#todo-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#todo-toggle .icon { width: 15px; height: 15px; fill: currentColor; }
+#todo-toggle.overdue #todo-count { color: var(--warn); }
+
+/* A small level meter while reading or answering, beside the icon. */
+.bars { display: none; align-items: center; gap: 2px; height: 12px; }
+#status[data-busy] .bars { display: flex; }
+
+.bars i {
+  width: 2.5px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text);
+  animation: level 0.9s ease-in-out infinite;
+}
+
+.bars i:nth-child(2) { animation-delay: -0.45s; }
+.bars i:nth-child(3) { animation-delay: -0.2s; }
+.bars i:nth-child(4) { animation-delay: -0.65s; }
+
+/* The question. */
+
+#bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 14px 0 22px;
+}
+
+#question {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  caret-color: var(--accent);
+}
+
+#question::placeholder { color: var(--text-3); }
+
+/* Hidden with opacity rather than display, so Return still submits. */
+#send {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: #000;
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+#bar.can-send #send { opacity: 1; transform: none; pointer-events: auto; }
+
+#send svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* What was read. */
+
+#read,
+#thread { border-top: 1px solid var(--line); }
+
+#read {
+  flex: none;
+  padding: 12px 14px 14px;
+  animation: appear 0.15s ease-out;
+}
+
+#read-meta {
+  margin: 0 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#read-text {
+  max-height: 160px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--fill);
+  color: var(--text-2);
+  font: 11px/1.55 ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+#read-text:empty,
+#view-text:empty,
+#view-meta:empty,
+#memory-text:empty,
+#memory-meta:empty { display: none; }
+
+#view-meta {
+  margin: 12px 8px 0;
+  color: var(--text-2);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#view-text {
+  max-height: 120px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--fill);
+  color: var(--text-2);
+  font: 11px/1.55 ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+#read-picture {
+  display: block;
+  max-width: 100%;
+  max-height: 160px;
+  margin: 10px 0 0;
+  border-radius: 10px;
+  background: var(--fill);
+}
+
+#read-picture[hidden] { display: none; }
+
+#memory-meta {
+  margin: 12px 8px 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+#memory-text {
+  max-height: 160px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--fill);
+  color: var(--text-2);
+  font: 11px/1.55 ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Cards from Freebyrd, such as yesterday's recap. A new card has a dot. */
+
+#cards {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 2px 14px 12px;
+}
+
+.card {
+  flex: none;
+  padding: 10px 14px 12px 16px;
+  border-radius: 18px;
+  background: var(--fill);
+  animation: appear 0.15s ease-out;
+}
+
+.card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.card header strong { color: var(--text); font-weight: 600; }
+
+/* The kind, with its solid icon: in its color while the card is new. */
+.card-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.card-kind .icon {
+  width: 13px;
+  height: 13px;
+  fill: var(--text-3);
+}
+
+.card.new .card-kind .icon { fill: var(--kind); }
+/* A plan's blocks keep their color: work, break or life. A suggestion set
+   up keeps its green check. */
+.card:is(.block, .lit) .card-kind .icon { fill: var(--kind); }
+.card-body .block-title { font-weight: 600; margin-bottom: 2px; }
+.event-form[hidden] { display: none; }
+
+.card-dismiss {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  transition: color 0.15s;
+}
+
+.card-dismiss .icon { width: 16px; height: 16px; fill: currentColor; }
+.card-dismiss:hover { color: var(--text-2); }
+.card-dismiss:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.card-body {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 6px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+.card-body h3 { font-size: 13px; color: var(--text-2); }
+
+/* A nudge's event, ready to change: title, then date, time and length,
+   then place. */
+.event-form {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+
+.ev-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 6px;
+}
+
+.event-form :is(input, select) {
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  outline: 0;
+  background: var(--fill-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  color-scheme: dark;
+}
+
+/* An offered event's place, with its alert under the time and length. */
+.ev-where .ev-alert { grid-column: span 2; }
+
+/* An event an answer offered: drawn again as the answer streams, so it
+   does not fade in each time. */
+.card.offered { animation: none; }
+.offered-about { color: var(--text-2); font-size: 12px; }
+
+.event-form .ev-title { font-weight: 600; font-size: 14px; }
+.event-form :is(input, select):focus { border-color: var(--accent); }
+.event-form select:disabled { opacity: 0.4; }
+.event-form input::placeholder { color: var(--text-3); }
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.card-action {
+  height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--fill-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.card-action.primary { background: var(--text); color: #000; }
+.card-action:active { transform: scale(0.97); }
+.card-action:disabled { opacity: 0.5; }
+.card-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.card-status { color: var(--text-2); font-size: 12px; }
+.card-status.error { color: var(--error); }
+
+/* A suggestion's draft, a skill's SKILL.md or a job's times and prompt,
+   shown on request. */
+.card-draft-toggle {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--text-3);
+  text-underline-offset: 3px;
+}
+
+.card-draft-toggle:hover { color: var(--text); }
+.card-draft-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.card pre.card-draft {
+  max-height: 180px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fill);
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+/* The closed island shows (main.rs `glow`): for waiting cards, which make
+   it glow, and for what is live (live.rs), which does not. */
+
+.shown #island:not(.open) { opacity: 1; }
+
+/* The pointer is over it (hover.rs): a click opens it. The open notch's
+   own buttons, hidden under it, take no clicks meanwhile. */
+.shown #island.hover:not(.open) { scale: 1.05; }
+.shown #island:not(.open) #clip { pointer-events: none; }
+
+.glow #island:not(.open) {
+  box-shadow: 0 2px 16px 3px rgb(10 132 255 / 0.75), 0 0 0 1px rgb(10 132 255 / 0.35);
+  animation: breathe 2.6s ease-in-out infinite;
+}
+
+/* Beside the notch, as the Dynamic Island's compact view shows a Live
+   Activity: on each side, its indicators (app.js `showWings`), with the
+   newest waiting card's icon at the outer edge. They ride the island's
+   edges as it widens and pop in once it has. The outer inset is
+   WING_OUTER in app.js. */
+#wings {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.wing {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: max-content;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.12s ease-in, transform 0.12s ease-in;
+}
+
+.wing.left { left: 12px; }
+.wing.right { right: 12px; }
+
+.shown #island:not(.open) .wing.on {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.2s ease-out 0.12s, transform 0.35s cubic-bezier(0.3, 1.5, 0.6, 1) 0.12s;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+}
+
+.chip .icon { width: 17px; height: 17px; fill: currentColor; }
+
+.chip b {
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A job's progress: a solid pie, never a ring (icons are solid). */
+@property --p {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.chip .pie {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: conic-gradient(currentColor calc(var(--p) * 1%), rgb(255 255 255 / 0.22) 0);
+  transition: --p 0.8s ease-out;
+}
+
+.chip .pie.starting {
+  background: conic-gradient(currentColor 25%, rgb(255 255 255 / 0.22) 0);
+  animation: turn 1.1s linear infinite;
+}
+
+/* A new indicator pops in beside one already showing. */
+.chip.entering { animation: pop 0.35s cubic-bezier(0.3, 1.5, 0.6, 1) both; }
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.4); }
+}
+
+@keyframes turn {
+  to { rotate: 1turn; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip .pie.starting { animation: none; }
+}
+
+@keyframes breathe {
+  50% { box-shadow: 0 1px 8px 1px rgb(10 132 255 / 0.4), 0 0 0 1px rgb(10 132 255 / 0.2); }
+}
+
+/* The thread: each question asked, in a bubble on the right, and its
+   answer, rendered from Markdown by app.js. The newest is at the bottom. */
+
+#thread {
+  position: relative; /* app.js scrolls to a turn's offsetTop */
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 22px 16px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+.turn + .turn { margin-top: 22px; }
+
+.asked {
+  width: fit-content;
+  max-width: 82%;
+  margin: 0 0 10px auto;
+  padding: 6px 14px;
+  border-radius: 18px;
+  background: var(--fill-2);
+  white-space: pre-wrap;
+  animation: appear 0.15s ease-out;
+}
+
+#thread.more-above { --fade-top: 24px; }
+#thread.more-below { --fade-bottom: 24px; }
+#thread:is(.more-above, .more-below) {
+  -webkit-mask-image: linear-gradient(transparent, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bottom, 0px)), transparent);
+  mask-image: linear-gradient(transparent, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bottom, 0px)), transparent);
+}
+
+:is(.reply, .card-body) > * { margin: 0 0 10px; }
+:is(.reply, .card-body) > :last-child { margin-bottom: 0; }
+
+:is(.reply, .card-body) h3 { margin-top: 16px; font-size: inherit; font-weight: 600; }
+:is(.reply, .card-body) > h3:first-child { margin-top: 0; }
+:is(.reply, .card-body) strong { font-weight: 600; }
+
+:is(.reply, .card-body) ul,
+:is(.reply, .card-body) ol { padding-left: 22px; }
+:is(.reply, .card-body) li + li { margin-top: 4px; }
+:is(.reply, .card-body) li::marker { color: var(--text-2); }
+:is(.reply, .card-body) li.sub { margin-left: 18px; list-style-type: circle; }
+
+:is(.reply, .card-body) code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--fill-2);
+  font: 0.86em ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+:is(.reply, .card-body) pre {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fill);
+  overflow-x: auto;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+:is(.reply, .card-body) pre code { padding: 0; background: none; font-size: 12px; }
+
+:is(.reply, .card-body) blockquote {
+  padding-left: 12px;
+  border-left: 2px solid var(--fill-2);
+  color: var(--text-2);
+}
+
+:is(.reply, .card-body) hr { height: 1px; border: 0; background: var(--line); }
+
+:is(.reply, .card-body) .link {
+  text-decoration: underline dotted var(--text-3);
+  text-underline-offset: 3px;
+}
+
+/* A day plan (day.rs): a line on its shape, how the time splits, its
+   blocks as cards, and what Freebyrd cannot see. */
+.day-plan .plan-note { margin: 0 0 2px; }
+.plan-balance { margin: 0 0 10px; color: var(--text-2); font-size: 12px; }
+.plan-cards { display: flex; flex-direction: column; gap: 8px; }
+.plan-caveat { margin: 10px 0 0; color: var(--text-3); font-size: 12px; }
+
+.reply .note { color: var(--text-2); font-size: 12px; }
+.reply .error { color: var(--error); }
+
+/* "Thinking…" and similar, until the answer starts. */
+.reply .pending {
+  background: linear-gradient(90deg, var(--text-3) 35%, var(--text) 50%, var(--text-3) 65%) 0 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* A soft dot at the end of an answer that is still arriving. */
+.reply.streaming > :is(p, h3, blockquote):not([class]):last-child::after,
+.reply.streaming > :is(ul, ol):last-child > li:last-child::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--text);
+  vertical-align: 0.05em;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse { 50% { opacity: 0.3; transform: scale(0.7); } }
+@keyframes level { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes appear { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation: none !important; transition: none !important; }
+}
+
+/* Quick asks: questions picked for the screen in front, one press each. */
+
+#quick {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 14px 12px 16px;
+  animation: appear 0.15s ease-out;
+}
+
+.quick-ask {
+  max-width: 100%;
+  height: 28px;
+  padding: 0 12px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: var(--fill);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.quick-ask:hover { background: var(--fill-2); }
+.quick-ask:active { transform: scale(0.97); }
+.quick-ask:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Up next: the one promise, task or event that most needs the person,
+   with buttons like a card's. */
+
+#upnext {
+  flex: none;
+  margin: 0 14px 12px;
+  padding: 10px 14px 12px 16px;
+  border-radius: 18px;
+  background: var(--fill);
+  animation: appear 0.15s ease-out;
+}
+
+#upnext header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.upnext-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.upnext-label .icon { width: 13px; height: 13px; fill: var(--kind); }
+.upnext-when.overdue { color: var(--warn); }
+.upnext-more { margin-left: auto; color: var(--text-3); }
+
+.upnext-place { margin: 2px 0 0; color: var(--text-2); font-size: 12px; }
+
+.upnext-title {
+  margin: 4px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A draft to send, from a ```draft block in an answer: the draft alone,
+   with Copy, and rework buttons once the answer is done (on the newest
+   answer only). */
+
+.answer-draft {
+  padding: 10px 14px 12px 16px;
+  border-radius: 18px;
+  background: var(--fill);
+}
+
+.answer-draft header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.answer-draft-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.answer-draft-label .icon { width: 13px; height: 13px; fill: #30d158; }
+
+.answer-draft-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--fill-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  transition: transform 0.1s;
+}
+
+.answer-draft-copy .icon { width: 12px; height: 12px; fill: currentColor; }
+.answer-draft-copy:active { transform: scale(0.97); }
+
+.answer-draft-text {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* A draft prepared before something is due (drafts.rs), inside its card. */
+.card .prepared-draft { margin-top: 10px; padding: 10px 12px 12px; border-radius: 14px; }
+.prepared-draft .answer-draft-text {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 13.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.card-done {
+  margin: 6px 0 0;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.card-done[hidden] { display: none; }
+.card-done li + li { margin-top: 3px; }
+
+.answer-draft-rework {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.answer-draft-rework .quick-ask { height: 26px; background: var(--fill-2); font-size: 12.5px; }
+
+.reply.streaming .answer-draft :is(.answer-draft-copy, .answer-draft-rework) { visibility: hidden; }
+.turn:not(:last-child) .answer-draft-rework { display: none; }
+
+/* The to-do list (todos.rs), behind the icon at the top right. While it is
+   open, the quick asks, Up next, cards and the thread step aside. */
+
+#content.listing #quick,
+#content.listing #upnext,
+#content.listing #cards,
+#content.listing #thread { display: none !important; }
+
+#todos {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 14px 12px;
+  border-top: 1px solid var(--line);
+  animation: appear 0.15s ease-out;
+}
+
+.todo-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+  padding: 10px 0 8px;
+  background: #000;
+}
+
+.todo-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.todo-tab:hover { color: var(--text); }
+.todo-tab[aria-selected="true"] { background: var(--fill-2); color: var(--text); }
+.todo-tab-count { margin-left: 5px; color: var(--text-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.todo-add input {
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 16px;
+  outline: none;
+  background: var(--fill);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.todo-add input::placeholder { color: var(--text-3); }
+.todo-add input:focus { background: var(--fill-2); }
+.todo-add .card-status:not(:empty) { display: block; margin: 4px 12px 0; }
+
+.todo-group {
+  margin: 12px 4px 2px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.todo-group.overdue { color: var(--warn); }
+.todo-body > .todo-group:first-child { margin-top: 2px; }
+
+.todo-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 8px;
+  padding: 6px 6px 6px 4px;
+  border-radius: 12px;
+}
+
+.todo-row:hover { background: var(--fill); }
+
+.todo-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.todo-check .icon { width: 18px; height: 18px; fill: rgb(255 255 255 / 0.16); transition: fill 0.15s; }
+.todo-check:hover .icon { fill: var(--text-3); }
+.todo-row.finished .todo-check .icon { fill: var(--ok); }
+
+.todo-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1px 0 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.todo-title { font-size: 13.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.todo-row.finished .todo-title { color: var(--text-2); text-decoration: line-through; text-decoration-color: var(--text-3); }
+
+.todo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.todo-meta > * + *::before { content: "\00b7"; margin: 0 6px; color: var(--text-3); }
+.todo-when.overdue { color: var(--warn); }
+.todo-latest { margin-top: 2px; overflow: hidden; color: var(--text-3); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.todo-details .todo-source + .todo-source { margin-top: 4px; }
+
+.person-chip { color: var(--text); font-weight: 600; cursor: pointer; }
+.person-chip:hover { color: var(--accent); }
+
+.todo-details { grid-column: 2; margin-top: 4px; }
+.todo-details .card-actions,
+.person-page > .card-actions { flex-wrap: wrap; margin-top: 8px; }
+.todo-source { margin: 0; color: var(--text-2); font-size: 12px; overflow-wrap: anywhere; }
+
+.todo-date input[type="date"] {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--fill-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  color-scheme: dark;
+}
+
+.todo-empty { margin: 12px 4px; color: var(--text-2); font-size: 12.5px; }
+
+/* Sessions (sessions.rs): a mark for where each stands, the title and its
+   folder, and Push on one with work left. */
+
+.session-row { grid-template-columns: 22px minmax(0, 1fr) auto; align-items: start; }
+.session-row .todo-main { cursor: pointer; }
+
+/* Who read what (the context connector): the eye, what a session read,
+   and the person's word on it. */
+.read-row .todo-main,
+.read-row .session-mark { cursor: default; }
+.read-row .session-mark { color: var(--text-2); }
+.read-verdicts { display: flex; gap: 6px; align-self: center; }
+
+.session-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgb(255 255 255 / 0.16);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.session-row.done .session-mark:hover { color: var(--text-3); }
+
+.session-mark .icon { width: 17px; height: 17px; fill: currentColor; }
+.session-row.waiting .session-mark { color: var(--text); }
+.session-row.blocked .session-mark { color: var(--warn); }
+.session-row.running .session-mark { color: var(--text); }
+
+/* Claude at work (a session's mark, and beside the notch): three dots that
+   brighten in turn, like a reply being typed. Still at half light when the
+   person asks for less motion. */
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5px;
+}
+
+.dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.25;
+  animation: dot 1.4s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) { animation-delay: 0.18s; }
+.dots span:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes dot {
+  0%, 70%, 100% { opacity: 0.25; transform: scale(0.8); }
+  35% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dots span { animation: none; opacity: 0.6; }
+}
+
+.session-row.done:not(.unpushed) .todo-title { color: var(--text-2); }
+.session-push { align-self: center; height: 24px; padding: 0 11px; font-size: 12.5px; }
+.session-row .card-status { grid-column: 2 / -1; }
+.session-row .card-status:empty { display: none; }
+
+/* People (people.rs): those who need the person first. */
+
+.person-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.person-row:hover { background: var(--fill); }
+.person-name { overflow: hidden; font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.person-detail { flex: none; color: var(--text-2); font-size: 12px; }
+.person-detail.needs { color: var(--warn); }
+
+.person-page { padding-top: 10px; }
+
+.page-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.page-head strong { font-size: 15px; }
+.page-about { color: var(--text-2); font-size: 12px; }
+
+.page-back {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.page-back:hover { color: var(--text); }
+.page-last { margin: 6px 0 0; color: var(--text-2); font-size: 12.5px; }
+
+.page-note {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  outline: none;
+  resize: none;
+  background: var(--fill);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.page-note::placeholder { color: var(--text-3); }
+.page-note:focus { background: var(--fill-2); }
+
+.page-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 4px; }
+.page-line-head { font-size: 12.5px; font-weight: 600; }
+.page-line-text { min-width: 0; color: var(--text-2); font-size: 12.5px; overflow-wrap: anywhere; }
+.page-line .card-action { height: 24px; padding: 0 10px; font-size: 12px; }
+
+.alias-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 4px; }
+
+.alias-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 5px 0 10px;
+  border-radius: 12px;
+  background: var(--fill);
+  font-size: 12px;
+}
+
+.alias-split { display: grid; place-items: center; width: 16px; height: 16px; padding: 0; border: 0; background: none; }
+.alias-split .icon { width: 14px; height: 14px; fill: var(--text-3); }
+.alias-split:hover .icon { fill: var(--text-2); }
+
+.page-merge {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--fill-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}

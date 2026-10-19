@@ -1,0 +1,268 @@
+/* Night shift (night.js, memory::night). Behind the moon at the top right,
+   beside the to-do list's icon; it steps the quick asks, Up next, cards and
+   the thread aside the way the list does.
+
+   One row everywhere: an icon in a tile, a title with one quiet line under
+   it, and one thing on the right. A tile is tinted only when something
+   needs the person. Every view ends in a foot that stays in view, with the
+   buttons on the right. */
+
+#night-toggle {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-2);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+#night-toggle:hover,
+#night-toggle[aria-expanded="true"] { background: var(--fill-2); color: var(--text); }
+#night-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#night-toggle .icon { width: 14px; height: 14px; fill: currentColor; }
+
+#night {
+  --night: #5e5ce6;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 14px 12px;
+  border-top: 1px solid var(--line);
+  animation: appear 0.15s ease-out;
+}
+
+.todo-tab-count.warn { color: var(--warn); }
+#night .todo-empty { margin: 10px 8px; }
+
+/* Rows. */
+
+.nt-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+button.nt-row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+button.nt-row:hover,
+.nt-row.hover:hover { background: var(--fill); }
+button.nt-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.nt-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--fill);
+}
+
+.nt-tile .icon { width: 14px; height: 14px; fill: var(--text-2); }
+.nt-tile.error { background: rgb(255 105 97 / 0.16); }
+.nt-tile.error .icon { fill: var(--error); }
+.nt-tile.warn { background: rgb(255 159 10 / 0.16); }
+.nt-tile.warn .icon { fill: var(--warn); }
+.nt-tile.ok .icon { fill: var(--ok); }
+.nt-tile.night { background: rgb(94 92 230 / 0.22); }
+.nt-tile.night .icon { fill: #a5a3ff; }
+
+.nt-text { flex: 1; min-width: 0; line-height: 1.3; }
+.nt-text b,
+.nt-text small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.nt-text b { color: var(--text); font-size: 13.5px; font-weight: 500; }
+.nt-text small { margin-top: 2px; color: var(--text-2); font-size: 12px; }
+
+.nt-end { flex: none; color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.nt-chev { flex: none; width: 13px; height: 13px; fill: var(--text-3); }
+
+/* Taking a job off tonight: shown on the row's hover. */
+.nt-remove {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.nt-row:hover .nt-remove { opacity: 1; }
+.nt-remove:hover { color: var(--text-2); }
+.nt-remove .icon { width: 16px; height: 16px; fill: currentColor; }
+
+.nt-small {
+  flex: none;
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--fill-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.nt-small:hover { background: rgb(255 255 255 / 0.2); }
+
+#night .todo-group { margin: 10px 8px 2px; }
+#night .todo-body > .todo-group:first-child { margin-top: 4px; }
+
+/* The foot stays in view while the rest scrolls. */
+.nt-foot {
+  position: sticky;
+  bottom: -12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px -14px -12px;
+  padding: 12px 14px 10px;
+  border-top: 1px solid var(--line);
+  background: #000;
+}
+
+.nt-summary { flex: 1; min-width: 0; font-size: 13px; line-height: 1.35; }
+.nt-summary small { display: block; color: var(--text-2); font-size: 12px; }
+.nt-foot .card-status { margin-right: auto; }
+
+/* A job's page: back, a heading, what it made, notes, buttons. */
+
+.nt-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  margin: 0 0 4px -4px;
+  padding: 0 10px 0 4px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.nt-back:hover { background: var(--fill); color: var(--text); }
+.nt-back .icon { width: 13px; height: 13px; fill: currentColor; }
+
+.nt-head { display: flex; align-items: center; gap: 12px; margin: 2px 2px 10px; }
+.nt-head .nt-tile { width: 34px; height: 34px; border-radius: 10px; }
+.nt-head .nt-tile .icon { width: 16px; height: 16px; }
+.nt-head .nt-text b { font-size: 15px; font-weight: 600; }
+
+.nt-notes { display: grid; gap: 7px; margin: 14px 4px 0; }
+.nt-notes:empty { display: none; }
+.nt-note { display: flex; align-items: baseline; gap: 10px; font-size: 13px; line-height: 1.45; }
+.nt-note::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  translate: 0 -1px;
+}
+
+.nt-note.warn::before { background: var(--warn); }
+.nt-note.error::before { background: var(--error); }
+
+/* A frame: the picture, or a dark tile while there is none. */
+.nt-ph {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: linear-gradient(150deg, #24242a, #121215);
+  overflow: hidden;
+}
+
+.nt-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.nt-ph.clip { cursor: pointer; }
+.nt-ph > span {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.5);
+  color: rgb(255 255 255 / 0.85);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.nt-play { position: absolute; inset: 0; display: grid; place-items: center; }
+.nt-play .icon { width: 16px; height: 16px; padding: 7px; box-sizing: content-box; border-radius: 50%; background: rgb(0 0 0 / 0.5); fill: rgb(255 255 255 / 0.9); }
+.nt-ph.big .nt-play .icon { width: 20px; height: 20px; padding: 10px; }
+.nt-ph.clip:hover .nt-play .icon { background: rgb(0 0 0 / 0.7); }
+
+/* A preview: its reel beside the notes; under it, the shots in order, each
+   coloured by what was found. */
+.nt-reel { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.nt-reel .nt-notes { margin-top: 0; }
+.nt-track { display: flex; gap: 3px; margin-top: 8px; }
+.nt-track span { flex: 1; min-width: 0; text-align: center; }
+.nt-track span::before { content: ""; display: block; height: 4px; border-radius: 2px; background: var(--fill-2); }
+.nt-track span.warn::before { background: var(--warn); }
+.nt-track span.error::before { background: var(--error); }
+.nt-track small { display: block; overflow: hidden; padding-top: 5px; color: var(--text-3); font-size: 10.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.nt-track span.warn small { color: var(--warn); }
+.nt-track span.error small { color: var(--error); }
+
+.nt-strip.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.nt-cap { margin-top: 5px; color: var(--text-2); font-size: 11.5px; text-align: center; }
+
+/* The smart stack on the to-do list (`nightStack`): what Freebyrd can do
+   now, one card at a time, a second card's edge showing under it when
+   there are more. */
+.nt-stack {
+  position: relative;
+  margin: 2px 0 14px;
+  padding: 8px 8px 10px;
+  border-radius: 18px;
+  background: var(--fill);
+}
+
+.nt-stack.many::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -5px;
+  height: 5px;
+  border-radius: 0 0 12px 12px;
+  background: rgb(255 255 255 / 0.05);
+}
+
+.nt-stack header { display: flex; align-items: center; gap: 2px; padding: 0 2px 2px 8px; }
+.nt-stack-label { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; color: var(--text-2); font-size: 12px; font-weight: 600; }
+.nt-stack-label .icon { width: 13px; height: 13px; fill: #a5a3ff; }
+.nt-dots { display: inline-flex; gap: 5px; padding: 0 4px; }
+.nt-dot { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 50%; background: var(--text-3); }
+.nt-dot.on { background: var(--text); }
+.nt-step { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); }
+.nt-step:hover { background: var(--fill-2); color: var(--text); }
+.nt-step .icon { width: 12px; height: 12px; fill: currentColor; }
+.nt-stack .nt-row:hover { background: transparent; }
+.nt-stack-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 6px 2px 0 8px; }
+.nt-stack-actions .card-status { margin-right: auto; }
+.card-status.nt-live { color: #a5a3ff; }

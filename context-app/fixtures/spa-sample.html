@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SPA fixture</title>
+</head>
+<body>
+  <main>
+    <h1>Single-page app fixture</h1>
+    <p id="status">Loading messages...</p>
+  </main>
+  <script>
+    // Simulates content that arrives after the page has loaded.
+    setTimeout(() => {
+      document.getElementById("status").textContent = "Marker: HERON-5512 arrived after load";
+      // Shows up in the fixture server's request log, for debugging capture timing.
+      fetch(`/__visibility?state=${document.visibilityState}`).catch(() => {});
+    }, 3000);
+  </script>
+</body>
+</html>

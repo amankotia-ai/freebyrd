@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pilot next steps - me@example.com - Gmail</title>
+</head>
+<body>
+  <!-- Serve the project root (not fixtures/) so ../extension/content.js loads.
+       Checks gmailConversation() against Gmail-like markup. The page title
+       becomes PASS or FAIL; window.result holds the details. -->
+  <div role="main">
+    <h2 class="hP">Pilot next steps</h2>
+    <div class="adn">
+      <span class="gD" email="priya@acme.test" name="Priya Shah">Priya Shah</span>
+      <span class="hb">to <span class="g2" email="me@example.com" name="Me">me</span></span>
+      <span class="g3" title="Tue, 13 Oct 2026, 11:00">11:00</span>
+      <div class="a3s aiL">
+        <div>Could you send over the revised pilot proposal?</div>
+        <div class="gmail_quote" style="display:none">On Mon, someone wrote: an old message</div>
+      </div>
+    </div>
+    <div class="adn">
+      <span class="gD" email="Me@Example.com" name="Me">Me</span>
+      <span class="hb">to <span class="g2" email="priya@acme.test" name="Priya Shah">Priya</span>, <span class="g2" email="ben@acme.test" name="Ben Merton">Ben</span>, <span class="g2" email="Ben@acme.test" name="Ben Merton">Ben</span></span>
+      <span class="g3" title="Tue, 13 Oct 2026, 11:30">11:30</span>
+      <div class="a3s aiL">Sure, I will send it by Thursday.</div>
+    </div>
+    <div class="adn">
+      <span class="gD" email="priya@acme.test" name="Priya Shah">Priya Shah</span>
+      <div class="a3s aiL"></div>
+    </div>
+  </div>
+
+  <script src="../extension/content.js"></script>
+  <script>
+    const expected = {
+      app: "gmail",
+      key: "Pilot next steps",
+      title: "Pilot next steps",
+      messages: [
+        { sender: "Priya Shah", email: "priya@acme.test", me: false, to: [], time: "Tue, 13 Oct 2026, 11:00", text: "Could you send over the revised pilot proposal?" },
+        { sender: "Me", email: null, me: true, to: [{ name: "Priya Shah", email: "priya@acme.test" }, { name: "Ben Merton", email: "ben@acme.test" }], time: "Tue, 13 Oct 2026, 11:30", text: "Sure, I will send it by Thursday." },
+      ],
+    };
+    const got = gmailConversation(document, "mail.google.com");
+    const elsewhere = gmailConversation(document, "example.com");
+    const pass = JSON.stringify(got) === JSON.stringify(expected) && elsewhere === null;
+    document.title = pass ? "PASS" : "FAIL";
+    window.result = { pass, got, expected, elsewhere };
+  </script>
+</body>
+</html>

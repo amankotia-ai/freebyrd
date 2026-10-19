@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Freebyrd browser bridge",
+  "description": "Sends the text of the page you are viewing to the Freebyrd desktop app on this Mac.",
+  "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxR8HHSK7l6qKF/J1xfv5l1bG9wJf1tw3/U5FbQbzJEsKc0oaj9m73vAYsYMa6ZHjHtDLaUiyZcwS/7CCDTEH4B7TabUIbm8CsNiAP+SQLTmaKRDjDj4vFKCVKklCakfqSJhi8Pb5JaFxub+duzrYTDoYkqpjgaHcAtd5aEqcQG5UUpRCVdxvci4wNtG7aQQoxVoTPYzaXT+TMfisM3e7vzhqG90SdhwCk8s/v2ovqeMBToOFtlGcn/rPt3O0I5Gt5MV+3Cwppmtx1PNtMBTyOf3rtDfuN9VSxtyoR+CAvLKmwtKVkY33rFTYQbWs99faRE60moU6foJXYN5P8aTXuQIDAQAB",
+  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "minimum_chrome_version": "116",
+  "permissions": ["nativeMessaging", "tabs", "storage", "scripting", "alarms"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Freebyrd",
+    "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png" },
+    "default_popup": "popup.html"
+  }
+}
